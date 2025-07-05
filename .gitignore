@@ -1,0 +1,8 @@
+node_modules/
+.env
+.env.local
+.DS_Store
+*.log
+sikupi-459940e4621d.json
+CLAUDE.md
+project-brief-and-db-schema.md
