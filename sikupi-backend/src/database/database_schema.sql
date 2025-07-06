@@ -215,6 +215,8 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 -- Users can view their own data
 CREATE POLICY "Users can view own data" ON users FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own data" ON users FOR UPDATE USING (auth.uid() = id);
+-- Allow public user registration
+CREATE POLICY "Allow user registration" ON users FOR INSERT WITH CHECK (true);
 
 -- Products are viewable by all, manageable by owners
 CREATE POLICY "Products are viewable by all" ON products FOR SELECT USING (true);
