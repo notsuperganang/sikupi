@@ -1,5 +1,5 @@
 const { verifyToken } = require('../config/jwt');
-const { supabase } = require('../config/supabase');
+const { supabase, supabaseAdmin } = require('../config/supabase'); // Import both
 
 const authenticateToken = async (req, res, next) => {
   try {
@@ -15,14 +15,15 @@ const authenticateToken = async (req, res, next) => {
 
     const decoded = verifyToken(token);
     
-    // Get user from database
-    const { data: user, error } = await supabase
+    // Get user from database using ADMIN CLIENT to bypass RLS
+    const { data: user, error } = await supabaseAdmin  // ✅ Menggunakan admin client
       .from('users')
       .select('*')
       .eq('id', decoded.userId)
       .single();
 
     if (error || !user) {
+      console.error('User lookup error:', error); // Add debugging
       return res.status(401).json({ 
         error: 'Invalid token',
         message: 'User not found or token expired'
@@ -76,7 +77,8 @@ const optionalAuth = async (req, res, next) => {
 
     const decoded = verifyToken(token);
     
-    const { data: user, error } = await supabase
+    // Use admin client here too
+    const { data: user, error } = await supabaseAdmin
       .from('users')
       .select('*')
       .eq('id', decoded.userId)
@@ -102,4 +104,4 @@ module.exports = {
   requireBuyer,
   requireAdmin,
   optionalAuth
-};
+};  

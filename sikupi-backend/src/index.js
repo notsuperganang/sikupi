@@ -19,6 +19,7 @@ const cartRoutes = require('./routes/cart');
 const articleRoutes = require('./routes/articles');
 const userRoutes = require('./routes/users');
 const notificationRoutes = require('./routes/notifications');
+const chatbotRoutes = require('./routes/chatbot');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -74,6 +75,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

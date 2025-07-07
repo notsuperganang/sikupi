@@ -1,5 +1,5 @@
 const express = require('express');
-const { supabase } = require('../config/supabase');
+const { supabase, supabaseAdmin } = require('../config/supabase'); // Import both clients
 const { authenticateToken } = require('../middleware/auth');
 const { validateBody, validateParams, schemas } = require('../middleware/validation');
 
@@ -78,11 +78,13 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Add item to cart
+// Add item to cart - ✅ FIXED VERSION
 router.post('/items', authenticateToken, validateBody(schemas.cartItemAdd), async (req, res) => {
   try {
     const { product_id, quantity_kg } = req.body;
     const userId = req.user.id;
+
+    console.log('Adding to cart:', { userId, product_id, quantity_kg }); // Debug log
 
     // Check if product exists and is available
     const { data: product, error: productError } = await supabase
@@ -119,8 +121,8 @@ router.post('/items', authenticateToken, validateBody(schemas.cartItemAdd), asyn
       });
     }
 
-    // Check if item already exists in cart
-    const { data: existingItem, error: existingError } = await supabase
+    // Check if item already exists in cart using admin client
+    const { data: existingItem, error: existingError } = await supabaseAdmin
       .from('cart_items')
       .select('id, quantity_kg')
       .eq('user_id', userId)
@@ -136,7 +138,7 @@ router.post('/items', authenticateToken, validateBody(schemas.cartItemAdd), asyn
     }
 
     if (existingItem) {
-      // Update existing cart item
+      // Update existing cart item using admin client
       const newQuantity = existingItem.quantity_kg + quantity_kg;
 
       if (newQuantity > product.quantity_kg) {
@@ -146,7 +148,7 @@ router.post('/items', authenticateToken, validateBody(schemas.cartItemAdd), asyn
         });
       }
 
-      const { data: updatedItem, error: updateError } = await supabase
+      const { data: updatedItem, error: updateError } = await supabaseAdmin
         .from('cart_items')
         .update({ quantity_kg: newQuantity })
         .eq('id', existingItem.id)
@@ -177,8 +179,8 @@ router.post('/items', authenticateToken, validateBody(schemas.cartItemAdd), asyn
         item: updatedItem
       });
     } else {
-      // Add new cart item
-      const { data: newItem, error: insertError } = await supabase
+      // Add new cart item using admin client
+      const { data: newItem, error: insertError } = await supabaseAdmin
         .from('cart_items')
         .insert({
           user_id: userId,
@@ -203,9 +205,12 @@ router.post('/items', authenticateToken, validateBody(schemas.cartItemAdd), asyn
         console.error('Cart insert error:', insertError);
         return res.status(500).json({
           error: 'Failed to add to cart',
-          message: 'Could not add item to cart'
+          message: 'Could not add item to cart',
+          details: insertError.message
         });
       }
+
+      console.log('Cart item added successfully:', newItem.id); // Debug log
 
       res.status(201).json({
         message: 'Item added to cart successfully',
@@ -221,15 +226,15 @@ router.post('/items', authenticateToken, validateBody(schemas.cartItemAdd), asyn
   }
 });
 
-// Update cart item quantity
+// Update cart item quantity - ✅ FIXED VERSION
 router.put('/items/:id', authenticateToken, validateParams(schemas.uuidParam), validateBody(schemas.cartItemUpdate), async (req, res) => {
   try {
     const { id } = req.params;
     const { quantity_kg } = req.body;
     const userId = req.user.id;
 
-    // Check if cart item exists and belongs to user
-    const { data: cartItem, error: cartError } = await supabase
+    // Check if cart item exists and belongs to user using admin client
+    const { data: cartItem, error: cartError } = await supabaseAdmin
       .from('cart_items')
       .select(`
         *,
@@ -241,13 +246,20 @@ router.put('/items/:id', authenticateToken, validateParams(schemas.uuidParam), v
         )
       `)
       .eq('id', id)
-      .eq('user_id', userId)
       .single();
 
     if (cartError || !cartItem) {
       return res.status(404).json({
         error: 'Cart item not found',
         message: 'The requested cart item does not exist'
+      });
+    }
+
+    // Validate ownership
+    if (cartItem.user_id !== userId) {
+      return res.status(403).json({
+        error: 'Access denied',
+        message: 'You can only update your own cart items'
       });
     }
 
@@ -265,8 +277,8 @@ router.put('/items/:id', authenticateToken, validateParams(schemas.uuidParam), v
       });
     }
 
-    // Update cart item
-    const { data: updatedItem, error: updateError } = await supabase
+    // Update cart item using admin client
+    const { data: updatedItem, error: updateError } = await supabaseAdmin
       .from('cart_items')
       .update({ quantity_kg })
       .eq('id', id)
@@ -305,18 +317,17 @@ router.put('/items/:id', authenticateToken, validateParams(schemas.uuidParam), v
   }
 });
 
-// Remove item from cart
+// Remove item from cart - ✅ FIXED VERSION
 router.delete('/items/:id', authenticateToken, validateParams(schemas.uuidParam), async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    // Check if cart item exists and belongs to user
-    const { data: cartItem, error: checkError } = await supabase
+    // Check if cart item exists and belongs to user using admin client
+    const { data: cartItem, error: checkError } = await supabaseAdmin
       .from('cart_items')
-      .select('id')
+      .select('id, user_id')
       .eq('id', id)
-      .eq('user_id', userId)
       .single();
 
     if (checkError || !cartItem) {
@@ -326,8 +337,16 @@ router.delete('/items/:id', authenticateToken, validateParams(schemas.uuidParam)
       });
     }
 
-    // Delete cart item
-    const { error: deleteError } = await supabase
+    // Validate ownership
+    if (cartItem.user_id !== userId) {
+      return res.status(403).json({
+        error: 'Access denied',
+        message: 'You can only remove your own cart items'
+      });
+    }
+
+    // Delete cart item using admin client
+    const { error: deleteError } = await supabaseAdmin
       .from('cart_items')
       .delete()
       .eq('id', id);
@@ -352,12 +371,13 @@ router.delete('/items/:id', authenticateToken, validateParams(schemas.uuidParam)
   }
 });
 
-// Clear entire cart
+// Clear entire cart - ✅ FIXED VERSION
 router.delete('/', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const { error } = await supabase
+    // Delete all cart items for user using admin client
+    const { error } = await supabaseAdmin
       .from('cart_items')
       .delete()
       .eq('user_id', userId);

@@ -1,22 +1,24 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const { supabase } = require('../config/supabase');
+const { supabase, supabaseAdmin } = require('../config/supabase'); // Import both clients
 const { authenticateToken, requireBuyer, requireSeller } = require('../middleware/auth');
 const { validateBody, validateParams, validateQuery, schemas } = require('../middleware/validation');
 
 const router = express.Router();
 
-// Get user's transactions
+// Get user's transactions - ✅ FIXED VERSION
 router.get('/', authenticateToken, validateQuery(schemas.paginationQuery), async (req, res) => {
   try {
     const userId = req.user.id;
     const { page = 1, limit = 10, sort_by = 'created_at', order = 'desc' } = req.query;
 
+    console.log('Fetching transactions for user:', userId); // Debug log
+
     const offset = (page - 1) * limit;
     const ascending = order === 'asc';
 
-    // Get transactions where user is buyer or seller
-    const { data: transactions, error } = await supabase
+    // Get transactions where user is buyer or seller using admin client
+    const { data: transactions, error } = await supabaseAdmin
       .from('transactions')
       .select(`
         *,
@@ -53,19 +55,25 @@ router.get('/', authenticateToken, validateQuery(schemas.paginationQuery), async
       });
     }
 
-    // Get total count
-    const { count } = await supabase
+    console.log('Found transactions:', transactions?.length || 0); // Debug log
+
+    // Get total count using admin client
+    const { count, error: countError } = await supabaseAdmin
       .from('transactions')
       .select('*', { count: 'exact', head: true })
       .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`);
 
+    if (countError) {
+      console.error('Transaction count error:', countError);
+    }
+
     res.json({
-      transactions,
+      transactions: transactions || [],
       pagination: {
-        page,
-        limit,
-        total: count,
-        totalPages: Math.ceil(count / limit)
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit)
       }
     });
   } catch (error) {
@@ -77,13 +85,16 @@ router.get('/', authenticateToken, validateQuery(schemas.paginationQuery), async
   }
 });
 
-// Get single transaction
+// Get single transaction - ✅ FIXED VERSION
 router.get('/:id', authenticateToken, validateParams(schemas.uuidParam), async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const { data: transaction, error } = await supabase
+    console.log('Fetching transaction:', { id, userId }); // Debug log
+
+    // Use admin client to bypass RLS
+    const { data: transaction, error } = await supabaseAdmin
       .from('transactions')
       .select(`
         *,
@@ -122,6 +133,7 @@ router.get('/:id', authenticateToken, validateParams(schemas.uuidParam), async (
       .single();
 
     if (error || !transaction) {
+      console.log('Transaction not found:', error); // Debug log
       return res.status(404).json({
         error: 'Transaction not found',
         message: 'The requested transaction does not exist'
@@ -136,6 +148,8 @@ router.get('/:id', authenticateToken, validateParams(schemas.uuidParam), async (
       });
     }
 
+    console.log('Transaction found successfully'); // Debug log
+
     res.json({
       transaction
     });
@@ -148,11 +162,14 @@ router.get('/:id', authenticateToken, validateParams(schemas.uuidParam), async (
   }
 });
 
-// Create new transaction (purchase)
+// Create new transaction (purchase) - ✅ FIXED VERSION
 router.post('/', authenticateToken, requireBuyer, validateBody(schemas.transactionCreate), async (req, res) => {
   try {
     const { product_id, quantity_kg, shipping_address, notes } = req.body;
     const buyerId = req.user.id;
+
+    console.log('Creating transaction for buyer:', buyerId); // Debug log
+    console.log('Transaction data:', { product_id, quantity_kg, shipping_address }); // Debug log
 
     // Get product details
     const { data: product, error: productError } = await supabase
@@ -205,7 +222,7 @@ router.post('/', authenticateToken, requireBuyer, validateBody(schemas.transacti
     const totalAmount = quantity_kg * product.price_per_kg;
     const shippingCost = 0; // Will be calculated by shipping service
 
-    // Create transaction
+    // Create transaction using admin client
     const transactionData = {
       id: uuidv4(),
       buyer_id: buyerId,
@@ -220,7 +237,9 @@ router.post('/', authenticateToken, requireBuyer, validateBody(schemas.transacti
       status: 'pending'
     };
 
-    const { data: transaction, error: transactionError } = await supabase
+    console.log('Final transaction data:', transactionData); // Debug log
+
+    const { data: transaction, error: transactionError } = await supabaseAdmin
       .from('transactions')
       .insert(transactionData)
       .select(`
@@ -242,19 +261,22 @@ router.post('/', authenticateToken, requireBuyer, validateBody(schemas.transacti
       console.error('Transaction creation error:', transactionError);
       return res.status(500).json({
         error: 'Transaction creation failed',
-        message: 'Could not create transaction'
+        message: 'Could not create transaction',
+        details: transactionError.message
       });
     }
 
-    // Remove item from cart if it exists
-    await supabase
+    console.log('Transaction created successfully:', transaction.id); // Debug log
+
+    // Remove item from cart if it exists using admin client
+    await supabaseAdmin
       .from('cart_items')
       .delete()
       .eq('user_id', buyerId)
       .eq('product_id', product_id);
 
-    // Create notification for seller
-    await supabase
+    // Create notification for seller using admin client
+    await supabaseAdmin
       .from('notifications')
       .insert({
         user_id: product.seller_id,
@@ -277,15 +299,23 @@ router.post('/', authenticateToken, requireBuyer, validateBody(schemas.transacti
   }
 });
 
-// Update transaction status
+// Update transaction status - ✅ FIXED VERSION with DEBUG
 router.put('/:id/status', authenticateToken, validateParams(schemas.uuidParam), validateBody(schemas.transactionStatusUpdate), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, tracking_number, notes } = req.body;
     const userId = req.user.id;
+    const userType = req.user.user_type;
 
-    // Get current transaction
-    const { data: currentTransaction, error: fetchError } = await supabase
+    console.log('=== UPDATE TRANSACTION STATUS DEBUG ===');
+    console.log('Transaction ID:', id);
+    console.log('Requested Status:', status);
+    console.log('User ID:', userId);
+    console.log('User Type:', userType);
+    console.log('User Email:', req.user.email);
+
+    // Get current transaction using admin client
+    const { data: currentTransaction, error: fetchError } = await supabaseAdmin
       .from('transactions')
       .select(`
         *,
@@ -296,31 +326,60 @@ router.put('/:id/status', authenticateToken, validateParams(schemas.uuidParam), 
         ),
         buyer:users!transactions_buyer_id_fkey (
           id,
-          full_name
+          full_name,
+          email
         ),
         seller:users!transactions_seller_id_fkey (
           id,
-          full_name
+          full_name,
+          email
         )
       `)
       .eq('id', id)
       .single();
 
-    if (fetchError || !currentTransaction) {
+    if (fetchError) {
+      console.error('Fetch transaction error:', fetchError);
+      return res.status(500).json({
+        error: 'Database error',
+        message: 'Could not fetch transaction',
+        details: fetchError.message
+      });
+    }
+
+    if (!currentTransaction) {
+      console.log('Transaction not found in database');
       return res.status(404).json({
         error: 'Transaction not found',
         message: 'The requested transaction does not exist'
       });
     }
 
+    console.log('Current Transaction:');
+    console.log('- Buyer ID:', currentTransaction.buyer_id);
+    console.log('- Buyer Email:', currentTransaction.buyer?.email);
+    console.log('- Seller ID:', currentTransaction.seller_id);
+    console.log('- Seller Email:', currentTransaction.seller?.email);
+    console.log('- Current Status:', currentTransaction.status);
+
     // Check permissions for status updates
     const isSellerUpdate = currentTransaction.seller_id === userId;
     const isBuyerUpdate = currentTransaction.buyer_id === userId;
 
+    console.log('Permission Check:');
+    console.log('- Is Seller Update:', isSellerUpdate);
+    console.log('- Is Buyer Update:', isBuyerUpdate);
+
     if (!isSellerUpdate && !isBuyerUpdate) {
+      console.log('❌ User not involved in transaction');
       return res.status(403).json({
         error: 'Access denied',
-        message: 'You are not authorized to update this transaction'
+        message: 'You are not authorized to update this transaction',
+        debug: {
+          user_id: userId,
+          buyer_id: currentTransaction.buyer_id,
+          seller_id: currentTransaction.seller_id
+        }
       });
     }
 
@@ -334,33 +393,46 @@ router.put('/:id/status', authenticateToken, validateParams(schemas.uuidParam), 
     };
 
     if (!statusTransitions[currentTransaction.status].includes(status)) {
+      console.log('❌ Invalid status transition');
       return res.status(400).json({
         error: 'Invalid status transition',
-        message: `Cannot change status from ${currentTransaction.status} to ${status}`
+        message: `Cannot change status from ${currentTransaction.status} to ${status}`,
+        allowed_statuses: statusTransitions[currentTransaction.status]
       });
     }
 
-    // Only sellers can confirm and ship, buyers can cancel or confirm delivery
+    // Check role-specific permissions
     if (status === 'confirmed' && !isSellerUpdate) {
+      console.log('❌ Only sellers can confirm orders');
       return res.status(403).json({
         error: 'Access denied',
-        message: 'Only sellers can confirm orders'
+        message: 'Only sellers can confirm orders',
+        required_role: 'seller',
+        your_role: isBuyerUpdate ? 'buyer' : 'unknown'
       });
     }
 
     if (status === 'shipped' && !isSellerUpdate) {
+      console.log('❌ Only sellers can ship orders');
       return res.status(403).json({
         error: 'Access denied',
-        message: 'Only sellers can mark orders as shipped'
+        message: 'Only sellers can mark orders as shipped',
+        required_role: 'seller',
+        your_role: isBuyerUpdate ? 'buyer' : 'unknown'
       });
     }
 
     if (status === 'delivered' && !isBuyerUpdate) {
+      console.log('❌ Only buyers can confirm delivery');
       return res.status(403).json({
         error: 'Access denied',
-        message: 'Only buyers can confirm delivery'
+        message: 'Only buyers can confirm delivery',
+        required_role: 'buyer',
+        your_role: isSellerUpdate ? 'seller' : 'unknown'
       });
     }
+
+    console.log('✅ Permission check passed, proceeding with update');
 
     // Prepare update data
     const updateData = { status };
@@ -383,8 +455,10 @@ router.put('/:id/status', authenticateToken, validateParams(schemas.uuidParam), 
       updateData.notes = notes;
     }
 
-    // Update transaction
-    const { data: updatedTransaction, error: updateError } = await supabase
+    console.log('Update data:', updateData);
+
+    // Update transaction using admin client
+    const { data: updatedTransaction, error: updateError } = await supabaseAdmin
       .from('transactions')
       .update(updateData)
       .eq('id', id)
@@ -407,26 +481,36 @@ router.put('/:id/status', authenticateToken, validateParams(schemas.uuidParam), 
       .single();
 
     if (updateError) {
-      console.error('Transaction update error:', updateError);
+      console.error('❌ Transaction update error:', updateError);
       return res.status(500).json({
         error: 'Transaction update failed',
-        message: 'Could not update transaction status'
+        message: 'Could not update transaction status',
+        details: updateError.message
       });
     }
 
-    // Update product quantity if transaction is confirmed
+    console.log('✅ Transaction updated successfully');
+
+    // Update product quantity if transaction is confirmed using admin client
     if (status === 'confirmed') {
+      console.log('Updating product quantity...');
       const newQuantity = Math.max(0, currentTransaction.products.quantity_kg - currentTransaction.quantity_kg);
-      await supabase
+      const { error: productUpdateError } = await supabaseAdmin
         .from('products')
         .update({ 
           quantity_kg: newQuantity,
           status: newQuantity === 0 ? 'sold_out' : 'active'
         })
         .eq('id', currentTransaction.product_id);
+
+      if (productUpdateError) {
+        console.error('Product update error:', productUpdateError);
+      } else {
+        console.log('✅ Product quantity updated');
+      }
     }
 
-    // Create appropriate notifications
+    // Create appropriate notifications using admin client
     let notificationTitle = '';
     let notificationMessage = '';
     let notificationRecipient = null;
@@ -455,7 +539,8 @@ router.put('/:id/status', authenticateToken, validateParams(schemas.uuidParam), 
     }
 
     if (notificationRecipient) {
-      await supabase
+      console.log('Creating notification for:', notificationRecipient);
+      const { error: notificationError } = await supabaseAdmin
         .from('notifications')
         .insert({
           user_id: notificationRecipient,
@@ -464,30 +549,39 @@ router.put('/:id/status', authenticateToken, validateParams(schemas.uuidParam), 
           type: 'order_update',
           related_id: id
         });
+
+      if (notificationError) {
+        console.error('Notification creation error:', notificationError);
+      } else {
+        console.log('✅ Notification created');
+      }
     }
+
+    console.log('=== UPDATE COMPLETED SUCCESSFULLY ===');
 
     res.json({
       message: 'Transaction status updated successfully',
       transaction: updatedTransaction
     });
   } catch (error) {
-    console.error('Transaction status update error:', error);
+    console.error('❌ Transaction status update error:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: 'Something went wrong while updating transaction status'
+      message: 'Something went wrong while updating transaction status',
+      details: error.message
     });
   }
 });
 
-// Cancel transaction
+// Cancel transaction - ✅ FIXED VERSION
 router.post('/:id/cancel', authenticateToken, validateParams(schemas.uuidParam), async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
     const { reason } = req.body;
 
-    // Get current transaction
-    const { data: transaction, error: fetchError } = await supabase
+    // Get current transaction using admin client
+    const { data: transaction, error: fetchError } = await supabaseAdmin
       .from('transactions')
       .select(`
         *,
@@ -521,8 +615,8 @@ router.post('/:id/cancel', authenticateToken, validateParams(schemas.uuidParam),
       });
     }
 
-    // Update transaction status
-    const { data: updatedTransaction, error: updateError } = await supabase
+    // Update transaction status using admin client
+    const { data: updatedTransaction, error: updateError } = await supabaseAdmin
       .from('transactions')
       .update({
         status: 'cancelled',
@@ -541,11 +635,11 @@ router.post('/:id/cancel', authenticateToken, validateParams(schemas.uuidParam),
       });
     }
 
-    // Create notification for the other party
+    // Create notification for the other party using admin client
     const isSellerCancelling = transaction.seller_id === userId;
     const notificationRecipient = isSellerCancelling ? transaction.buyer_id : transaction.seller_id;
 
-    await supabase
+    await supabaseAdmin
       .from('notifications')
       .insert({
         user_id: notificationRecipient,
@@ -568,13 +662,15 @@ router.post('/:id/cancel', authenticateToken, validateParams(schemas.uuidParam),
   }
 });
 
-// Get transaction statistics for user
+// Get transaction statistics for user - ✅ FIXED VERSION
 router.get('/stats/summary', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Get transaction counts by status
-    const { data: transactionStats, error } = await supabase
+    console.log('Fetching transaction stats for user:', userId); // Debug log
+
+    // Get transaction counts by status using admin client
+    const { data: transactionStats, error } = await supabaseAdmin
       .from('transactions')
       .select('status')
       .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`);
@@ -588,13 +684,15 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
     }
 
     const stats = {
-      total: transactionStats.length,
-      pending: transactionStats.filter(t => t.status === 'pending').length,
-      confirmed: transactionStats.filter(t => t.status === 'confirmed').length,
-      shipped: transactionStats.filter(t => t.status === 'shipped').length,
-      delivered: transactionStats.filter(t => t.status === 'delivered').length,
-      cancelled: transactionStats.filter(t => t.status === 'cancelled').length
+      total: transactionStats?.length || 0,
+      pending: transactionStats?.filter(t => t.status === 'pending').length || 0,
+      confirmed: transactionStats?.filter(t => t.status === 'confirmed').length || 0,
+      shipped: transactionStats?.filter(t => t.status === 'shipped').length || 0,
+      delivered: transactionStats?.filter(t => t.status === 'delivered').length || 0,
+      cancelled: transactionStats?.filter(t => t.status === 'cancelled').length || 0
     };
+
+    console.log('Transaction stats:', stats); // Debug log
 
     res.json({
       stats

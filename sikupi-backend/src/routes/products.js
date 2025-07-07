@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
-const { supabase } = require('../config/supabase');
+const { supabase, supabaseAdmin } = require('../config/supabase'); // Import both
 const { uploadFile, getPublicUrl } = require('../config/storage');
 const { authenticateToken, requireSeller, optionalAuth } = require('../middleware/auth');
 const { validateBody, validateParams, validateQuery, schemas } = require('../middleware/validation');
@@ -176,8 +176,8 @@ router.get('/:id', validateParams(schemas.uuidParam), optionalAuth, async (req, 
       });
     }
 
-    // Increment view count
-    await supabase
+    // Increment view count using admin client
+    await supabaseAdmin
       .from('products')
       .update({ views_count: product.views_count + 1 })
       .eq('id', id);
@@ -210,16 +210,22 @@ router.get('/:id', validateParams(schemas.uuidParam), optionalAuth, async (req, 
   }
 });
 
-// Create new product
+// Create new product - ✅ FIXED VERSION
 router.post('/', authenticateToken, requireSeller, validateBody(schemas.productCreate), async (req, res) => {
   try {
+    console.log('Creating product for user:', req.user.id); // Debug log
+    console.log('Product data:', req.body); // Debug log
+
     const productData = {
       ...req.body,
       id: uuidv4(),
       seller_id: req.user.id
     };
 
-    const { data: product, error } = await supabase
+    console.log('Final product data:', productData); // Debug log
+
+    // Use supabaseAdmin to bypass RLS for product creation
+    const { data: product, error } = await supabaseAdmin  // ✅ Using admin client
       .from('products')
       .insert(productData)
       .select()
@@ -229,9 +235,12 @@ router.post('/', authenticateToken, requireSeller, validateBody(schemas.productC
       console.error('Product creation error:', error);
       return res.status(500).json({
         error: 'Product creation failed',
-        message: 'Could not create product'
+        message: 'Could not create product',
+        details: error.message
       });
     }
+
+    console.log('Product created successfully:', product.id); // Debug log
 
     res.status(201).json({
       message: 'Product created successfully',
@@ -246,14 +255,14 @@ router.post('/', authenticateToken, requireSeller, validateBody(schemas.productC
   }
 });
 
-// Update product
+// Update product - ✅ FIXED VERSION  
 router.put('/:id', authenticateToken, requireSeller, validateParams(schemas.uuidParam), validateBody(schemas.productUpdate), async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
 
-    // Check if product exists and user owns it
-    const { data: existingProduct, error: fetchError } = await supabase
+    // Check if product exists and user owns it using admin client
+    const { data: existingProduct, error: fetchError } = await supabaseAdmin
       .from('products')
       .select('seller_id')
       .eq('id', id)
@@ -273,7 +282,8 @@ router.put('/:id', authenticateToken, requireSeller, validateParams(schemas.uuid
       });
     }
 
-    const { data: product, error } = await supabase
+    // Update using admin client
+    const { data: product, error } = await supabaseAdmin
       .from('products')
       .update(updateData)
       .eq('id', id)
@@ -301,13 +311,13 @@ router.put('/:id', authenticateToken, requireSeller, validateParams(schemas.uuid
   }
 });
 
-// Delete product
+// Delete product - ✅ FIXED VERSION
 router.delete('/:id', authenticateToken, requireSeller, validateParams(schemas.uuidParam), async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if product exists and user owns it
-    const { data: existingProduct, error: fetchError } = await supabase
+    // Check if product exists and user owns it using admin client
+    const { data: existingProduct, error: fetchError } = await supabaseAdmin
       .from('products')
       .select('seller_id')
       .eq('id', id)
@@ -327,7 +337,8 @@ router.delete('/:id', authenticateToken, requireSeller, validateParams(schemas.u
       });
     }
 
-    const { error } = await supabase
+    // Delete using admin client
+    const { error } = await supabaseAdmin
       .from('products')
       .delete()
       .eq('id', id);
@@ -365,8 +376,8 @@ router.post('/:id/images', authenticateToken, requireSeller, validateParams(sche
       });
     }
 
-    // Check if product exists and user owns it
-    const { data: existingProduct, error: fetchError } = await supabase
+    // Check if product exists and user owns it using admin client
+    const { data: existingProduct, error: fetchError } = await supabaseAdmin
       .from('products')
       .select('seller_id')
       .eq('id', id)
@@ -397,8 +408,8 @@ router.post('/:id/images', authenticateToken, requireSeller, validateParams(sche
         await uploadFile(file.buffer, fileName);
         const publicUrl = getPublicUrl(fileName);
 
-        // Save image record to database
-        const { data: imageRecord, error: imageError } = await supabase
+        // Save image record to database using admin client
+        const { data: imageRecord, error: imageError } = await supabaseAdmin
           .from('product_images')
           .insert({
             product_id: id,
@@ -471,14 +482,14 @@ router.post('/:id/favorite', authenticateToken, validateParams(schemas.uuidParam
     }
 
     if (existingFavorite) {
-      // Remove from favorites
-      await supabase
+      // Remove from favorites using admin client
+      await supabaseAdmin
         .from('user_favorites')
         .delete()
         .eq('id', existingFavorite.id);
 
-      // Decrement favorites count
-      await supabase
+      // Decrement favorites count using admin client
+      await supabaseAdmin
         .from('products')
         .update({ favorites_count: Math.max(0, product.favorites_count - 1) })
         .eq('id', id);
@@ -488,16 +499,16 @@ router.post('/:id/favorite', authenticateToken, validateParams(schemas.uuidParam
         is_favorited: false
       });
     } else {
-      // Add to favorites
-      await supabase
+      // Add to favorites using admin client
+      await supabaseAdmin
         .from('user_favorites')
         .insert({
           user_id: userId,
           product_id: id
         });
 
-      // Increment favorites count
-      await supabase
+      // Increment favorites count using admin client
+      await supabaseAdmin
         .from('products')
         .update({ favorites_count: product.favorites_count + 1 })
         .eq('id', id);
