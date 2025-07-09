@@ -1,3 +1,5 @@
+// FILE PATH: /sikupi-frontend/src/lib/auth/guards.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";

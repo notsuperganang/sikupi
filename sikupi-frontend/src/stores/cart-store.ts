@@ -1,276 +1,389 @@
+// FILE PATH: /src/stores/cart-store.ts
+
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { 
+  cartService, 
+  type Cart, 
+  type CartItem, 
+  type AddToCartRequest, 
+  type UpdateCartItemRequest,
+  type Coupon,
+  type ApplyDiscountRequest,
+  type CalculateShippingRequest,
+  type ShippingOption
+} from "@/lib/api";
+import { toast } from "sonner";
 
-export interface CartItem {
-  id: string;
-  productId: string;
-  title: string;
-  price: number;
-  quantity: number;
-  weight: number;
-  image: string;
-  sellerId: string;
-  sellerName: string;
-  location: string;
-  grade: "A" | "B" | "C";
-  stock: number;
-}
-
-export interface CartSummary {
-  subtotal: number;
-  shippingCost: number;
-  tax: number;
-  discount: number;
-  total: number;
-  totalItems: number;
-  totalWeight: number;
-}
+export type { Cart, CartItem } from "@/lib/api";
 
 interface CartState {
-  // State
-  items: CartItem[];
+  // Cart data
+  cart: Cart | null;
+  cartCount: number;
   isLoading: boolean;
   error: string | null;
-
-  // Computed
-  summary: CartSummary;
-
+  
+  // Coupons and discounts
+  availableCoupons: Coupon[];
+  appliedCoupon: {
+    code: string;
+    discountAmount: number;
+    discountType: string;
+  } | null;
+  
+  // Shipping
+  shippingOptions: ShippingOption[];
+  selectedShippingOption: ShippingOption | null;
+  shippingCost: number;
+  
+  // Computed values
+  subtotal: number;
+  totalAmount: number;
+  totalWeight: number;
+  
   // Actions
-  addItem: (product: Omit<CartItem, "id" | "quantity">, quantity?: number) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  clearCart: () => void;
+  fetchCart: () => Promise<void>;
+  fetchCartCount: () => Promise<void>;
+  addItem: (item: AddToCartRequest) => Promise<void>;
+  updateItem: (itemId: string, data: UpdateCartItemRequest) => Promise<void>;
+  removeItem: (itemId: string) => Promise<void>;
+  clearCart: () => Promise<void>;
+  
+  // Coupon actions
+  fetchCoupons: () => Promise<void>;
+  applyDiscount: (data: ApplyDiscountRequest) => Promise<void>;
+  removeCoupon: () => void;
+  
+  // Shipping actions
+  calculateShipping: (data: CalculateShippingRequest) => Promise<void>;
+  selectShippingOption: (option: ShippingOption) => void;
+  
+  // Utility actions
   getItemQuantity: (productId: string) => number;
   isInCart: (productId: string) => boolean;
-  loadCart: () => Promise<void>;
-  syncCart: () => Promise<void>;
-  applyDiscount: (discountCode: string) => Promise<void>;
-  calculateShipping: (destination: string) => Promise<void>;
-  setLoading: (loading: boolean) => void;
+  updateTotals: () => void;
   setError: (error: string | null) => void;
+  setLoading: (loading: boolean) => void;
 }
 
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       // Initial state
-      items: [],
+      cart: null,
+      cartCount: 0,
       isLoading: false,
       error: null,
+      
+      availableCoupons: [],
+      appliedCoupon: null,
+      
+      shippingOptions: [],
+      selectedShippingOption: null,
+      shippingCost: 0,
+      
+      subtotal: 0,
+      totalAmount: 0,
+      totalWeight: 0,
 
-      // Computed summary
-      get summary(): CartSummary {
-        const items = get().items;
-        
-        const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-        const totalWeight = items.reduce((sum, item) => sum + (item.weight * item.quantity), 0);
-        
-        // Simple calculation - can be enhanced with actual shipping API
-        const shippingCost = totalWeight > 0 ? Math.max(10000, totalWeight * 2000) : 0;
-        const tax = subtotal * 0.11; // 11% PPN
-        const discount = 0; // Will be calculated when discount is applied
-        const total = subtotal + shippingCost + tax - discount;
-
-        return {
-          subtotal,
-          shippingCost,
-          tax,
-          discount,
-          total,
-          totalItems,
-          totalWeight,
-        };
-      },
-
-      // Actions
-      addItem: (product, quantity = 1) => {
-        const items = get().items;
-        const existingItem = items.find(item => item.productId === product.productId);
-
-        if (existingItem) {
-          // Update quantity if item already exists
-          const newQuantity = Math.min(existingItem.quantity + quantity, product.stock);
-          set({
-            items: items.map(item =>
-              item.productId === product.productId
-                ? { ...item, quantity: newQuantity }
-                : item
-            ),
-          });
-        } else {
-          // Add new item
-          const newItem: CartItem = {
-            ...product,
-            id: `cart_${Date.now()}_${Math.random()}`,
-            quantity: Math.min(quantity, product.stock),
-          };
-          
-          set({
-            items: [...items, newItem],
-          });
-        }
-
-        // Sync with server (if user is authenticated)
-        get().syncCart();
-      },
-
-      removeItem: (productId) => {
-        set({
-          items: get().items.filter(item => item.productId !== productId),
-        });
-        get().syncCart();
-      },
-
-      updateQuantity: (productId, quantity) => {
-        if (quantity <= 0) {
-          get().removeItem(productId);
-          return;
-        }
-
-        set({
-          items: get().items.map(item =>
-            item.productId === productId
-              ? { ...item, quantity: Math.min(quantity, item.stock) }
-              : item
-          ),
-        });
-        get().syncCart();
-      },
-
-      clearCart: () => {
-        set({ items: [] });
-        get().syncCart();
-      },
-
-      getItemQuantity: (productId) => {
-        const item = get().items.find(item => item.productId === productId);
-        return item?.quantity || 0;
-      },
-
-      isInCart: (productId) => {
-        return get().items.some(item => item.productId === productId);
-      },
-
-      loadCart: async () => {
-        set({ isLoading: true, error: null });
-        
+      // Fetch current cart
+      fetchCart: async () => {
         try {
-          // TODO: Replace with actual API call
-          // For now, cart is loaded from localStorage via persist middleware
-          set({ isLoading: false });
-        } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : "Gagal memuat keranjang",
-            isLoading: false,
+          set({ isLoading: true, error: null });
+          
+          const cart = await cartService.getCart();
+          
+          set({ cart, isLoading: false });
+          get().updateTotals();
+          get().fetchCartCount();
+        } catch (error: any) {
+          console.error('Failed to fetch cart:', error);
+          set({ 
+            error: error.message || 'Failed to fetch cart', 
+            isLoading: false 
           });
         }
       },
 
-      syncCart: async () => {
-        // Only sync if user is authenticated
+      // Fetch cart count only
+      fetchCartCount: async () => {
         try {
-          // TODO: Replace with actual API call
-          const items = get().items;
-          
-          // Example API call structure:
-          // await fetch("/api/cart/sync", {
-          //   method: "POST",
-          //   headers: {
-          //     "Content-Type": "application/json",
-          //     "Authorization": `Bearer ${token}`,
-          //   },
-          //   body: JSON.stringify({ items }),
-          // });
-        } catch (error) {
-          console.error("Failed to sync cart:", error);
-          // Don't throw error to avoid disrupting user experience
+          const response = await cartService.getCartCount();
+          set({ cartCount: response.totalItems });
+        } catch (error: any) {
+          console.error('Failed to fetch cart count:', error);
+          // Don't set error for count fetch failures
         }
       },
 
-      applyDiscount: async (discountCode) => {
-        set({ isLoading: true, error: null });
-        
+      // Add item to cart
+      addItem: async (item: AddToCartRequest) => {
         try {
-          // TODO: Replace with actual API call
-          const response = await fetch("/api/cart/apply-discount", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ 
-              code: discountCode,
-              items: get().items,
-            }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || "Kode diskon tidak valid");
-          }
-
-          const data = await response.json();
+          set({ isLoading: true, error: null });
           
-          // Update cart with discount information
-          // This would require extending the CartSummary interface
-          set({ isLoading: false });
+          const response = await cartService.addToCart(item);
           
-        } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : "Gagal menerapkan diskon",
-            isLoading: false,
+          set({ 
+            cart: response.cart, 
+            isLoading: false 
           });
+          
+          get().updateTotals();
+          get().fetchCartCount();
+          
+          toast.success("Produk berhasil ditambahkan ke keranjang!");
+        } catch (error: any) {
+          console.error('Failed to add item to cart:', error);
+          set({ 
+            error: error.message || 'Failed to add item to cart', 
+            isLoading: false 
+          });
+          toast.error("Gagal menambahkan produk ke keranjang");
           throw error;
         }
       },
 
-      calculateShipping: async (destination) => {
-        set({ isLoading: true, error: null });
-        
+      // Update cart item
+      updateItem: async (itemId: string, data: UpdateCartItemRequest) => {
         try {
-          // TODO: Replace with actual shipping API call (e.g., Biteship)
-          const items = get().items;
-          const totalWeight = items.reduce((sum, item) => sum + (item.weight * item.quantity), 0);
+          set({ isLoading: true, error: null });
           
-          const response = await fetch("/api/shipping/calculate", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ 
-              destination,
-              weight: totalWeight,
-              items,
-            }),
+          const response = await cartService.updateCartItem(itemId, data);
+          
+          set({ 
+            cart: response.cart, 
+            isLoading: false 
           });
-
-          if (!response.ok) {
-            throw new Error("Gagal menghitung ongkos kirim");
-          }
-
-          const data = await response.json();
           
-          // Update shipping cost in summary
-          // This would require modifying how summary is calculated
-          set({ isLoading: false });
+          get().updateTotals();
+          get().fetchCartCount();
           
-        } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : "Gagal menghitung ongkos kirim",
-            isLoading: false,
+          toast.success("Keranjang berhasil diperbarui!");
+        } catch (error: any) {
+          console.error('Failed to update cart item:', error);
+          set({ 
+            error: error.message || 'Failed to update cart item', 
+            isLoading: false 
           });
+          toast.error("Gagal memperbarui keranjang");
+          throw error;
         }
       },
 
-      setLoading: (loading) => set({ isLoading: loading }),
-      
-      setError: (error) => set({ error }),
+      // Remove item from cart
+      removeItem: async (itemId: string) => {
+        try {
+          set({ isLoading: true, error: null });
+          
+          const response = await cartService.removeCartItem(itemId);
+          
+          set({ 
+            cart: response.cart, 
+            isLoading: false 
+          });
+          
+          get().updateTotals();
+          get().fetchCartCount();
+          
+          toast.success("Produk berhasil dihapus dari keranjang!");
+        } catch (error: any) {
+          console.error('Failed to remove cart item:', error);
+          set({ 
+            error: error.message || 'Failed to remove cart item', 
+            isLoading: false 
+          });
+          toast.error("Gagal menghapus produk dari keranjang");
+          throw error;
+        }
+      },
+
+      // Clear entire cart
+      clearCart: async () => {
+        try {
+          set({ isLoading: true, error: null });
+          
+          const response = await cartService.clearCart();
+          
+          set({ 
+            cart: response.cart, 
+            isLoading: false,
+            appliedCoupon: null,
+            selectedShippingOption: null,
+            shippingCost: 0
+          });
+          
+          get().updateTotals();
+          get().fetchCartCount();
+          
+          toast.success("Keranjang berhasil dikosongkan!");
+        } catch (error: any) {
+          console.error('Failed to clear cart:', error);
+          set({ 
+            error: error.message || 'Failed to clear cart', 
+            isLoading: false 
+          });
+          toast.error("Gagal mengosongkan keranjang");
+          throw error;
+        }
+      },
+
+      // Fetch available coupons
+      fetchCoupons: async () => {
+        try {
+          const response = await cartService.getAvailableCoupons();
+          set({ availableCoupons: response.coupons });
+        } catch (error: any) {
+          console.error('Failed to fetch coupons:', error);
+          // Don't show error toast for coupons
+        }
+      },
+
+      // Apply discount coupon
+      applyDiscount: async (data: ApplyDiscountRequest) => {
+        try {
+          set({ isLoading: true, error: null });
+          
+          const response = await cartService.applyDiscount(data);
+          
+          set({ 
+            cart: response.cart,
+            appliedCoupon: {
+              code: response.discount.couponCode,
+              discountAmount: response.discount.discountAmount,
+              discountType: response.discount.discountType,
+            },
+            isLoading: false 
+          });
+          
+          get().updateTotals();
+          
+          toast.success("Kupon berhasil diterapkan!");
+        } catch (error: any) {
+          console.error('Failed to apply discount:', error);
+          set({ 
+            error: error.message || 'Failed to apply discount', 
+            isLoading: false 
+          });
+          toast.error("Gagal menerapkan kupon");
+          throw error;
+        }
+      },
+
+      // Remove applied coupon
+      removeCoupon: () => {
+        set({ appliedCoupon: null });
+        get().updateTotals();
+        toast.success("Kupon berhasil dihapus!");
+      },
+
+      // Calculate shipping options
+      calculateShipping: async (data: CalculateShippingRequest) => {
+        try {
+          set({ isLoading: true, error: null });
+          
+          const response = await cartService.calculateShipping(data);
+          
+          set({ 
+            shippingOptions: response.shippingOptions,
+            isLoading: false 
+          });
+          
+          if (response.shippingOptions.length > 0) {
+            toast.success("Opsi pengiriman berhasil dimuat!");
+          }
+        } catch (error: any) {
+          console.error('Failed to calculate shipping:', error);
+          set({ 
+            error: error.message || 'Failed to calculate shipping', 
+            isLoading: false 
+          });
+          toast.error("Gagal menghitung ongkos kirim");
+        }
+      },
+
+      // Select shipping option
+      selectShippingOption: (option: ShippingOption) => {
+        set({ 
+          selectedShippingOption: option,
+          shippingCost: option.price 
+        });
+        get().updateTotals();
+      },
+
+      // Get quantity of specific product in cart
+      getItemQuantity: (productId: string): number => {
+        const { cart } = get();
+        if (!cart) return 0;
+        
+        const item = cart.items.find(item => item.productId === productId);
+        return item ? item.quantity : 0;
+      },
+
+      // Check if product is in cart
+      isInCart: (productId: string): boolean => {
+        const { cart } = get();
+        if (!cart) return false;
+        
+        return cart.items.some(item => item.productId === productId);
+      },
+
+      // Update calculated totals
+      updateTotals: () => {
+        const { cart, appliedCoupon, shippingCost } = get();
+        
+        if (!cart) {
+          set({ 
+            subtotal: 0, 
+            totalAmount: 0, 
+            totalWeight: 0 
+          });
+          return;
+        }
+
+        const subtotal = cart.totalPrice || 0;
+        const totalWeight = cart.totalWeight || 0;
+        const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+        const totalAmount = subtotal - discountAmount + shippingCost;
+
+        set({ 
+          subtotal, 
+          totalAmount: Math.max(0, totalAmount), 
+          totalWeight 
+        });
+      },
+
+      // Set error state
+      setError: (error: string | null) => {
+        set({ error });
+      },
+
+      // Set loading state
+      setLoading: (loading: boolean) => {
+        set({ isLoading: loading });
+      },
     }),
     {
-      name: "sikupi-cart",
+      name: 'sikupi-cart',
+      // Only persist non-sensitive cart data
       partialize: (state) => ({
-        items: state.items,
+        appliedCoupon: state.appliedCoupon,
+        selectedShippingOption: state.selectedShippingOption,
+        shippingCost: state.shippingCost,
       }),
     }
   )
 );
+
+// Selector hooks for better performance
+export const useCartCount = () => useCartStore((state) => state.cartCount);
+export const useCartItems = () => useCartStore((state) => state.cart?.items || []);
+export const useCartTotals = () => useCartStore((state) => ({
+  subtotal: state.subtotal,
+  totalAmount: state.totalAmount,
+  totalWeight: state.totalWeight,
+  discountAmount: state.appliedCoupon?.discountAmount || 0,
+  shippingCost: state.shippingCost,
+}));
+export const useCartLoading = () => useCartStore((state) => state.isLoading);
+export const useCartError = () => useCartStore((state) => state.error);

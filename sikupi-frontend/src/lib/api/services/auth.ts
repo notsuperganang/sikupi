@@ -1,152 +1,34 @@
-// FILE PATH: /sikupi-frontend/src/lib/api/services/auth.ts
+// FILE PATH: /src/lib/api/services/auth.ts
 
 import { api } from '@/lib/api/client';
 import { API_ENDPOINTS } from '@/lib/constants';
-import { User } from '@/stores/auth-store';
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface LoginResponse {
-  success: boolean;
-  user: User;
-  token: string;
-  refreshToken: string;
-  message: string;
-}
-
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  fullName: string;
-  phone: string;
-  userType: 'seller' | 'buyer';
-  address?: string;
-  city?: string;
-  province?: string;
-  postalCode?: string;
-  businessName?: string;
-  businessType?: string;
-}
-
-export interface RegisterResponse {
-  success: boolean;
-  user: User;
-  token: string;
-  refreshToken: string;
-  message: string;
-}
-
-// Helper function to map frontend fields to backend fields
-function mapRegisterDataToBackend(data: RegisterRequest) {
-  const baseData = {
-    email: data.email,
-    password: data.password,
-    full_name: data.fullName,        // Map fullName to full_name
-    phone: data.phone,
-    user_type: data.userType,        // Map userType to user_type
-    address: data.address,
-    city: data.city,
-    province: data.province,
-    postal_code: data.postalCode,    // Map postalCode to postal_code
-  };
-
-  // Only add business fields for sellers
-  if (data.userType === 'seller') {
-    return {
-      ...baseData,
-      business_name: data.businessName || '', // Map businessName to business_name
-      business_type: data.businessType || '', // Map businessType to business_type
-    };
-  }
-
-  return baseData;
-}
-
-// Helper function to map backend user data to frontend format
-function mapUserFromBackend(backendUser: any): User {
-  return {
-    id: backendUser.id,
-    email: backendUser.email,
-    fullName: backendUser.full_name || backendUser.fullName,
-    phone: backendUser.phone,
-    userType: backendUser.user_type || backendUser.userType,
-    address: backendUser.address,
-    city: backendUser.city,
-    province: backendUser.province,
-    postalCode: backendUser.postal_code || backendUser.postalCode,
-    businessName: backendUser.business_name || backendUser.businessName,
-    businessType: backendUser.business_type || backendUser.businessType,
-    avatarUrl: backendUser.avatar_url || backendUser.avatarUrl,
-    isVerified: backendUser.is_verified || backendUser.isVerified || false,
-    emailVerified: backendUser.email_verified || backendUser.emailVerified || false,
-    phoneVerified: backendUser.phone_verified || backendUser.phoneVerified || false,
-    rating: backendUser.rating,
-    totalReviews: backendUser.total_reviews || backendUser.totalReviews || 0,
-    createdAt: backendUser.created_at || backendUser.createdAt,
-    updatedAt: backendUser.updated_at || backendUser.updatedAt,
-  };
-}
-
-export interface RefreshTokenRequest {
-  refreshToken: string;
-}
-
-export interface RefreshTokenResponse {
-  success: boolean;
-  token: string;
-  refreshToken: string;
-  message: string;
-}
-
-export interface UpdateProfileRequest {
-  fullName?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  province?: string;
-  postalCode?: string;
-  businessName?: string;
-  businessType?: string;
-  userType?: 'seller' | 'buyer'; // Add userType to determine if business fields should be sent
-}
-
-export interface UpdateProfileResponse {
-  success: boolean;
-  user: User;
-  message: string;
-}
-
-export interface ChangePasswordRequest {
-  currentPassword: string;
-  newPassword: string;
-}
-
-export interface ChangePasswordResponse {
-  success: boolean;
-  message: string;
-}
-
-export interface ForgotPasswordRequest {
-  email: string;
-}
-
-export interface ForgotPasswordResponse {
-  success: boolean;
-  message: string;
-}
-
-export interface ResetPasswordRequest {
-  token: string;
-  newPassword: string;
-}
-
-export interface ResetPasswordResponse {
-  success: boolean;
-  message: string;
-}
+import { 
+  User,
+  UserProfile,
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  RegisterResponse,
+  UpdateProfileRequest,
+  UpdateProfileResponse,
+  ChangePasswordRequest,
+  ChangePasswordResponse,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
+  RefreshTokenRequest,
+  RefreshTokenResponse,
+  UploadProfileImageRequest,
+  UploadProfileImageResponse,
+  VerifyEmailRequest,
+  VerifyEmailResponse,
+  ResendVerificationRequest,
+  ResendVerificationResponse,
+  mapUserFromBackend,
+  mapRegisterDataToBackend,
+  mapUpdateProfileToBackend
+} from '@/lib/types/auth';
 
 // Auth service implementation
 export const authService = {
@@ -190,14 +72,8 @@ export const authService = {
       // Map frontend data to backend format
       const backendData = mapRegisterDataToBackend(userData);
       
-      console.log('Frontend data:', userData); // Debug log
-      console.log('Mapped backend data:', backendData); // Debug log
-      
       const response = await api.post<any>(API_ENDPOINTS.AUTH.REGISTER, backendData);
       
-      console.log('Backend response:', response); // Debug log
-      
-      // Validate response structure
       if (!response.user || !response.token) {
         throw new Error('Invalid response from server');
       }
@@ -213,32 +89,42 @@ export const authService = {
         message: response.message || 'Registration successful',
       };
     } catch (error: any) {
-      console.error('Registration error details:', {
-        status: error.status,
-        message: error.message,
-        originalError: error
-      }); // Enhanced debug log
-      
-      // Handle specific error cases
       if (error.status === 409) {
-        throw new Error('Email sudah terdaftar. Silakan gunakan email lain.');
-      } else if (error.status === 422 || error.status === 400) {
-        // Extract specific field errors from backend response
-        const errorMessage = error.message || 'Data yang dimasukkan tidak valid';
-        throw new Error(errorMessage);
+        throw new Error('Email sudah terdaftar');
+      } else if (error.status === 422) {
+        throw new Error('Data registrasi tidak valid');
       }
       
       throw new Error(error.message || 'Registrasi gagal. Silakan coba lagi.');
     }
   },
 
-  // Get current user profile
+  // Logout user
+  logout: async (): Promise<{ success: boolean; message: string }> => {
+    try {
+      await api.post<any>(API_ENDPOINTS.AUTH.LOGOUT);
+      
+      return {
+        success: true,
+        message: 'Logout successful',
+      };
+    } catch (error: any) {
+      // Even if logout fails on server, we still consider it successful on client
+      console.warn('Logout API error:', error.message);
+      return {
+        success: true,
+        message: 'Logout successful',
+      };
+    }
+  },
+
+  // Get user profile
   getProfile: async (): Promise<{ user: User }> => {
     try {
-      const response = await api.get<{ user: any }>(API_ENDPOINTS.AUTH.PROFILE);
+      const response = await api.get<any>(API_ENDPOINTS.AUTH.PROFILE);
       
       if (!response.user) {
-        throw new Error('Invalid profile data received');
+        throw new Error('Invalid response from server');
       }
       
       // Map user data from backend format
@@ -254,32 +140,13 @@ export const authService = {
     }
   },
 
-  // Update user profile
-  updateProfile: async (userData: UpdateProfileRequest & { userType?: 'seller' | 'buyer' }): Promise<UpdateProfileResponse> => {
+  // Update user profile - now supports admin userType
+  updateProfile: async (userData: UpdateProfileRequest): Promise<UpdateProfileResponse> => {
     try {
-      // Map frontend data to backend format for update
-      const baseData = {
-        full_name: userData.fullName,
-        phone: userData.phone,
-        address: userData.address,
-        city: userData.city,
-        province: userData.province,
-        postal_code: userData.postalCode,
-      };
-
-      // Only add business fields for sellers
-      const backendData = userData.userType === 'seller' ? {
-        ...baseData,
-        business_name: userData.businessName,
-        business_type: userData.businessType,
-      } : baseData;
+      // Map frontend data to backend format
+      const backendData = mapUpdateProfileToBackend(userData);
       
-      // Remove undefined values
-      const cleanedData = Object.fromEntries(
-        Object.entries(backendData).filter(([_, v]) => v !== undefined)
-      );
-      
-      const response = await api.put<any>(API_ENDPOINTS.AUTH.PROFILE, cleanedData);
+      const response = await api.put<any>(API_ENDPOINTS.AUTH.PROFILE, backendData);
       
       if (!response.user) {
         throw new Error('Invalid response from server');
@@ -305,7 +172,13 @@ export const authService = {
   // Change password
   changePassword: async (passwordData: ChangePasswordRequest): Promise<ChangePasswordResponse> => {
     try {
-      const response = await api.post<any>('/api/auth/change-password', passwordData);
+      const backendData = {
+        current_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword,
+      };
+      
+      const response = await api.post<any>('/api/auth/change-password', backendData);
+      
       return {
         success: true,
         message: response.message || 'Password changed successfully',
@@ -318,6 +191,47 @@ export const authService = {
       }
       
       throw new Error(error.message || 'Gagal mengubah password');
+    }
+  },
+
+  // Forgot password
+  forgotPassword: async (data: ForgotPasswordRequest): Promise<ForgotPasswordResponse> => {
+    try {
+      const response = await api.post<any>(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, data);
+      
+      return {
+        success: true,
+        message: response.message || 'Reset password link sent to your email',
+      };
+    } catch (error: any) {
+      if (error.status === 404) {
+        throw new Error('Email tidak ditemukan');
+      }
+      
+      throw new Error(error.message || 'Gagal mengirim email reset password');
+    }
+  },
+
+  // Reset password
+  resetPassword: async (data: ResetPasswordRequest): Promise<ResetPasswordResponse> => {
+    try {
+      const backendData = {
+        token: data.token,
+        new_password: data.newPassword,
+      };
+      
+      const response = await api.post<any>(API_ENDPOINTS.AUTH.RESET_PASSWORD, backendData);
+      
+      return {
+        success: true,
+        message: response.message || 'Password reset successful',
+      };
+    } catch (error: any) {
+      if (error.status === 400) {
+        throw new Error('Token reset password tidak valid atau sudah kedaluwarsa');
+      }
+      
+      throw new Error(error.message || 'Gagal reset password');
     }
   },
 
@@ -337,130 +251,109 @@ export const authService = {
         message: response.message || 'Token refreshed successfully',
       };
     } catch (error: any) {
-      if (error.status === 401) {
-        throw new Error('Refresh token expired');
-      }
-      
-      throw new Error(error.message || 'Token refresh failed');
-    }
-  },
-
-  // Logout user
-  logout: async (): Promise<void> => {
-    try {
-      await api.post('/api/auth/logout');
-    } catch (error) {
-      // Even if logout fails on server, we should clear local state
-      console.warn('Logout API call failed:', error);
-    }
-  },
-
-  // Forgot password
-  forgotPassword: async (emailData: ForgotPasswordRequest): Promise<ForgotPasswordResponse> => {
-    try {
-      const response = await api.post<any>('/api/auth/forgot-password', emailData);
-      return {
-        success: true,
-        message: response.message || 'Reset email sent successfully',
-      };
-    } catch (error: any) {
-      if (error.status === 404) {
-        throw new Error('Email tidak ditemukan dalam sistem');
-      } else if (error.status === 429) {
-        throw new Error('Terlalu banyak permintaan reset password. Coba lagi nanti.');
-      }
-      
-      throw new Error(error.message || 'Gagal mengirim email reset password');
-    }
-  },
-
-  // Reset password
-  resetPassword: async (resetData: ResetPasswordRequest): Promise<ResetPasswordResponse> => {
-    try {
-      const response = await api.post<any>('/api/auth/reset-password', resetData);
-      return {
-        success: true,
-        message: response.message || 'Password reset successfully',
-      };
-    } catch (error: any) {
-      if (error.status === 401) {
-        throw new Error('Token reset password tidak valid atau sudah kadaluarsa');
-      } else if (error.status === 422) {
-        throw new Error('Password baru tidak memenuhi kriteria');
-      }
-      
-      throw new Error(error.message || 'Gagal reset password');
-    }
-  },
-
-  // Verify email
-  verifyEmail: async (token: string): Promise<{ success: boolean; message: string }> => {
-    try {
-      const response = await api.post<any>('/api/auth/verify-email', { token });
-      return {
-        success: true,
-        message: response.message || 'Email verified successfully',
-      };
-    } catch (error: any) {
-      throw new Error(error.message || 'Email verification failed');
-    }
-  },
-
-  // Resend email verification
-  resendVerification: async (): Promise<{ success: boolean; message: string }> => {
-    try {
-      const response = await api.post<any>('/api/auth/resend-verification');
-      return {
-        success: true,
-        message: response.message || 'Verification email sent',
-      };
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to resend verification email');
-    }
-  },
-
-  // Check if email exists (for registration validation)
-  checkEmailExists: async (email: string): Promise<{ exists: boolean }> => {
-    try {
-      const response = await api.post<{ exists: boolean }>('/api/auth/check-email', { email });
-      return response;
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to check email');
+      throw new Error('Session expired. Please login again.');
     }
   },
 
   // Upload profile image
-  uploadProfileImage: async (file: File): Promise<{ avatarUrl: string }> => {
+  uploadProfileImage: async (file: File): Promise<UploadProfileImageResponse> => {
     try {
       const formData = new FormData();
       formData.append('image', file);
       
-      const response = await api.post<{ avatarUrl: string }>('/api/uploads/profile-image', formData, {
+      const response = await api.post<any>('/api/auth/upload-avatar', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
       
-      return response;
+      return {
+        success: true,
+        avatarUrl: response.avatarUrl || response.avatar_url,
+        message: response.message || 'Profile image uploaded successfully',
+      };
     } catch (error: any) {
       throw new Error(error.message || 'Failed to upload profile image');
     }
   },
+
+  // Verify email
+  verifyEmail: async (data: VerifyEmailRequest): Promise<VerifyEmailResponse> => {
+    try {
+      const response = await api.post<any>(API_ENDPOINTS.AUTH.VERIFY_EMAIL, data);
+      
+      return {
+        success: true,
+        message: response.message || 'Email verified successfully',
+      };
+    } catch (error: any) {
+      if (error.status === 400) {
+        throw new Error('Token verifikasi tidak valid atau sudah kedaluwarsa');
+      }
+      
+      throw new Error(error.message || 'Gagal verifikasi email');
+    }
+  },
+
+  // Resend verification email
+  resendVerification: async (data: ResendVerificationRequest): Promise<ResendVerificationResponse> => {
+    try {
+      const response = await api.post<any>(API_ENDPOINTS.AUTH.RESEND_VERIFICATION, data);
+      
+      return {
+        success: true,
+        message: response.message || 'Verification email sent successfully',
+      };
+    } catch (error: any) {
+      if (error.status === 429) {
+        throw new Error('Terlalu banyak permintaan. Coba lagi nanti.');
+      }
+      
+      throw new Error(error.message || 'Gagal mengirim email verifikasi');
+    }
+  },
+
+  // Check authentication status
+  checkAuth: async (): Promise<{ user: User }> => {
+    try {
+      const response = await api.get<any>('/api/auth/me');
+      
+      if (!response.user) {
+        throw new Error('Invalid response from server');
+      }
+      
+      const mappedUser = mapUserFromBackend(response.user);
+      
+      return { user: mappedUser };
+    } catch (error: any) {
+      throw new Error('Authentication check failed');
+    }
+  },
 };
 
-// Export individual functions for convenience
-export const {
-  login,
-  register,
-  getProfile,
-  updateProfile,
-  changePassword,
-  refreshToken,
-  logout,
-  forgotPassword,
-  resetPassword,
-  verifyEmail,
-  resendVerification,
-  checkEmailExists,
-  uploadProfileImage,
-} = authService;
+// Export service and types
+export default authService;
+export type {
+  User,
+  UserProfile,
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  RegisterResponse,
+  UpdateProfileRequest,
+  UpdateProfileResponse,
+  ChangePasswordRequest,
+  ChangePasswordResponse,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
+  RefreshTokenRequest,
+  RefreshTokenResponse,
+  UploadProfileImageRequest,
+  UploadProfileImageResponse,
+  VerifyEmailRequest,
+  VerifyEmailResponse,
+  ResendVerificationRequest,
+  ResendVerificationResponse,
+};

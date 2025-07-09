@@ -1,15 +1,18 @@
-// FILE PATH: /sikupi-frontend/src/lib/hooks/use-products.ts
+// FILE PATH: /src/lib/hooks/use-products.ts
 
 "use client";
 
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { 
   productsService, 
+  type Product,
   type ProductFilters, 
   type CreateProductRequest, 
   type UpdateProductRequest,
-  type Product 
-} from "@/lib/api/services/products";
+  type UploadImagesRequest,
+  type UploadImagesResponse
+} from "@/lib/api";
 import { toast } from "sonner";
 
 // Query keys for React Query
@@ -136,13 +139,11 @@ export function useMyProducts(filters: ProductFilters = {}) {
   return useQuery({
     queryKey: productKeys.my(filters),
     queryFn: () => productsService.getMyProducts(filters),
-    staleTime: 1 * 60 * 1000, // 1 minute (more frequent updates for own products)
-    gcTime: 3 * 60 * 1000, // 3 minutes
+    staleTime: 30 * 1000, // 30 seconds for fresh data
+    gcTime: 2 * 60 * 1000, // 2 minutes
     retry: 2,
   });
 }
-
-// Mutations for product management
 
 // Create product mutation
 export function useCreateProduct() {
@@ -150,20 +151,18 @@ export function useCreateProduct() {
 
   return useMutation({
     mutationFn: (data: CreateProductRequest) => productsService.createProduct(data),
-    onSuccess: (response) => {
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: productKeys.my() });
+    onSuccess: (data) => {
+      // Invalidate and refetch relevant queries
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: productKeys.categories() });
+      queryClient.invalidateQueries({ queryKey: productKeys.my() });
       
       toast.success('Product created successfully!', {
-        description: 'Your product has been added to the marketplace.',
+        description: `${data.product.title} has been added to your store.`,
       });
     },
     onError: (error: any) => {
-      const errorMessage = error.message || 'Failed to create product';
       toast.error('Failed to create product', {
-        description: errorMessage,
+        description: error.message || 'Something went wrong while creating the product.',
       });
     },
   });
@@ -176,23 +175,21 @@ export function useUpdateProduct() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateProductRequest }) => 
       productsService.updateProduct(id, data),
-    onSuccess: (response, variables) => {
+    onSuccess: (data, { id }) => {
       // Update specific product in cache
-      queryClient.setQueryData(
-        productKeys.detail(variables.id),
-        { product: response.product }
-      );
+      queryClient.setQueryData(productKeys.detail(id), { product: data.product });
       
-      // Invalidate related queries
-      queryClient.invalidateQueries({ queryKey: productKeys.my() });
+      // Invalidate lists to refresh
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: productKeys.my() });
       
-      toast.success('Product updated successfully!');
+      toast.success('Product updated successfully!', {
+        description: `${data.product.title} has been updated.`,
+      });
     },
     onError: (error: any) => {
-      const errorMessage = error.message || 'Failed to update product';
       toast.error('Failed to update product', {
-        description: errorMessage,
+        description: error.message || 'Something went wrong while updating the product.',
       });
     },
   });
@@ -204,20 +201,19 @@ export function useDeleteProduct() {
 
   return useMutation({
     mutationFn: (id: string) => productsService.deleteProduct(id),
-    onSuccess: (_, deletedId) => {
+    onSuccess: (_, id) => {
       // Remove from cache
-      queryClient.removeQueries({ queryKey: productKeys.detail(deletedId) });
+      queryClient.removeQueries({ queryKey: productKeys.detail(id) });
       
-      // Invalidate related queries
-      queryClient.invalidateQueries({ queryKey: productKeys.my() });
+      // Invalidate lists
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: productKeys.my() });
       
       toast.success('Product deleted successfully!');
     },
     onError: (error: any) => {
-      const errorMessage = error.message || 'Failed to delete product';
       toast.error('Failed to delete product', {
-        description: errorMessage,
+        description: error.message || 'Something went wrong while deleting the product.',
       });
     },
   });
@@ -228,31 +224,15 @@ export function useUploadProductImages() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, images }: { id: string; images: File[] }) => 
-      productsService.uploadProductImages(id, images),
-    onSuccess: (response, variables) => {
-      // Update product data in cache with new images
-      queryClient.setQueryData(
-        productKeys.detail(variables.id),
-        (oldData: any) => {
-          if (oldData?.product) {
-            return {
-              ...oldData,
-              product: {
-                ...oldData.product,
-                imageUrls: response.imageUrls,
-              },
-            };
-          }
-          return oldData;
-        }
-      );
+    mutationFn: ({ productId, images }: { productId: string; images: File[] }) => 
+      productsService.uploadProductImages(productId, images),
+    onSuccess: (data, { productId }) => {
+      // Invalidate product detail to refetch with new images
+      queryClient.invalidateQueries({ queryKey: productKeys.detail(productId) });
       
-      // Invalidate related queries
-      queryClient.invalidateQueries({ queryKey: productKeys.my() });
-      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
-      
-      toast.success('Images uploaded successfully!');
+      toast.success('Images uploaded successfully!', {
+        description: `${data.imageUrls.length} image(s) uploaded.`,
+      });
     },
     onError: (error: any) => {
       const errorMessage = error.message || 'Failed to upload images';
@@ -408,6 +388,3 @@ export function useDebouncedSearch(
 
   return useSearchProducts(debouncedQuery, filters, debouncedQuery.length > 2);
 }
-
-// Export query keys for external use
-export { productKeys };

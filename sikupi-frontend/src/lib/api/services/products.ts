@@ -1,217 +1,25 @@
-// FILE PATH: /sikupi-frontend/src/lib/api/services/products.ts
+// FILE PATH: /src/lib/api/services/products.ts
 
 import { api } from '@/lib/api/client';
 import { API_ENDPOINTS } from '@/lib/constants';
+import { 
+  Product, 
+  ProductFilters, 
+  ProductsResponse, 
+  CreateProductRequest, 
+  CreateProductResponse,
+  UpdateProductRequest, 
+  UpdateProductResponse,
+  UploadImagesRequest,
+  UploadImagesResponse,
+  mapProductFromBackend,
+  mapProductToBackend,
+  mapFiltersToBackend
+} from '@/lib/types/product';
 
-// Product types matching backend schema
-export interface Product {
-  id: string;
-  title: string;
-  description: string;
-  wasteType: 'coffee_grounds' | 'coffee_pulp' | 'coffee_husks' | 'coffee_chaff';
-  quantityKg: number;
-  pricePerKg: number;
-  qualityGrade: 'A' | 'B' | 'C' | 'D';
-  processingMethod?: string;
-  originLocation: string;
-  harvestDate?: string;
-  expiryDate?: string;
-  moistureContent?: number;
-  organicCertified: boolean;
-  fairTradeCertified: boolean;
-  status: 'active' | 'inactive' | 'sold_out';
-  imageUrls: string[];
-  tags: string[];
-  viewsCount: number;
-  favoritesCount: number;
-  
-  // Seller information
-  sellerId: string;
-  sellerName: string;
-  sellerBusinessName?: string;
-  sellerRating?: number;
-  sellerReviewCount?: number;
-  sellerVerified?: boolean;
-  
-  // Computed fields
-  totalPrice: number; // quantityKg * pricePerKg
-  isAvailable: boolean;
-  
-  // Timestamps
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ProductFilters {
-  search?: string;
-  wasteType?: string;
-  qualityGrade?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  location?: string;
-  organicCertified?: boolean;
-  fairTradeCertified?: boolean;
-  sellerVerified?: boolean;
-  status?: string;
-  sortBy?: 'newest' | 'oldest' | 'price_low' | 'price_high' | 'rating' | 'popular';
-  page?: number;
-  limit?: number;
-}
-
-export interface ProductsResponse {
-  products: Product[];
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    totalItems: number;
-    itemsPerPage: number;
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-  };
-  filters: {
-    wasteTypes: Array<{ type: string; count: number }>;
-    qualityGrades: Array<{ grade: string; count: number }>;
-    priceRange: { min: number; max: number };
-    locations: Array<{ location: string; count: number }>;
-  };
-}
-
-export interface CreateProductRequest {
-  title: string;
-  description: string;
-  wasteType: string;
-  quantityKg: number;
-  pricePerKg: number;
-  qualityGrade?: string;
-  processingMethod?: string;
-  originLocation: string;
-  harvestDate?: string;
-  expiryDate?: string;
-  moistureContent?: number;
-  organicCertified?: boolean;
-  fairTradeCertified?: boolean;
-  tags?: string[];
-  images?: File[];
-}
-
-export interface CreateProductResponse {
-  success: boolean;
-  product: Product;
-  message: string;
-}
-
-export interface UpdateProductRequest {
-  title?: string;
-  description?: string;
-  quantityKg?: number;
-  pricePerKg?: number;
-  qualityGrade?: string;
-  processingMethod?: string;
-  originLocation?: string;
-  harvestDate?: string;
-  expiryDate?: string;
-  moistureContent?: number;
-  organicCertified?: boolean;
-  fairTradeCertified?: boolean;
-  status?: string;
-  tags?: string[];
-}
-
-export interface UpdateProductResponse {
-  success: boolean;
-  product: Product;
-  message: string;
-}
-
-// Helper function to map backend product data to frontend format
-function mapProductFromBackend(backendProduct: any): Product {
-  return {
-    id: backendProduct.id,
-    title: backendProduct.title,
-    description: backendProduct.description || '',
-    wasteType: backendProduct.waste_type || backendProduct.wasteType,
-    quantityKg: backendProduct.quantity_kg || backendProduct.quantityKg || 0,
-    pricePerKg: backendProduct.price_per_kg || backendProduct.pricePerKg || 0,
-    qualityGrade: backendProduct.quality_grade || backendProduct.qualityGrade || 'C',
-    processingMethod: backendProduct.processing_method || backendProduct.processingMethod,
-    originLocation: backendProduct.origin_location || backendProduct.originLocation || '',
-    harvestDate: backendProduct.harvest_date || backendProduct.harvestDate,
-    expiryDate: backendProduct.expiry_date || backendProduct.expiryDate,
-    moistureContent: backendProduct.moisture_content || backendProduct.moistureContent,
-    organicCertified: backendProduct.organic_certified || backendProduct.organicCertified || false,
-    fairTradeCertified: backendProduct.fair_trade_certified || backendProduct.fairTradeCertified || false,
-    status: backendProduct.status || 'active',
-    imageUrls: backendProduct.image_urls || backendProduct.imageUrls || [],
-    tags: backendProduct.tags || [],
-    viewsCount: backendProduct.views_count || backendProduct.viewsCount || 0,
-    favoritesCount: backendProduct.favorites_count || backendProduct.favoritesCount || 0,
-    
-    // Seller information
-    sellerId: backendProduct.seller_id || backendProduct.sellerId,
-    sellerName: backendProduct.seller?.full_name || backendProduct.sellerName || 'Unknown Seller',
-    sellerBusinessName: backendProduct.seller?.business_name || backendProduct.sellerBusinessName,
-    sellerRating: backendProduct.seller?.rating || backendProduct.sellerRating || 0,
-    sellerReviewCount: backendProduct.seller?.total_reviews || backendProduct.sellerReviewCount || 0,
-    sellerVerified: backendProduct.seller?.is_verified || backendProduct.sellerVerified || false,
-    
-    // Computed fields
-    totalPrice: (backendProduct.quantity_kg || backendProduct.quantityKg || 0) * 
-                (backendProduct.price_per_kg || backendProduct.pricePerKg || 0),
-    isAvailable: (backendProduct.status || 'active') === 'active' && 
-                 (backendProduct.quantity_kg || backendProduct.quantityKg || 0) > 0,
-    
-    // Timestamps
-    createdAt: backendProduct.created_at || backendProduct.createdAt,
-    updatedAt: backendProduct.updated_at || backendProduct.updatedAt,
-  };
-}
-
-// Helper function to map frontend filters to backend query params
-function mapFiltersToBackend(filters: ProductFilters) {
-  const backendFilters: Record<string, any> = {};
-  
-  if (filters.search) backendFilters.search = filters.search;
-  if (filters.wasteType) backendFilters.waste_type = filters.wasteType;
-  if (filters.qualityGrade) backendFilters.quality_grade = filters.qualityGrade;
-  if (filters.minPrice) backendFilters.min_price = filters.minPrice;
-  if (filters.maxPrice) backendFilters.max_price = filters.maxPrice;
-  if (filters.location) backendFilters.location = filters.location;
-  if (filters.organicCertified !== undefined) backendFilters.organic_certified = filters.organicCertified;
-  if (filters.fairTradeCertified !== undefined) backendFilters.fair_trade_certified = filters.fairTradeCertified;
-  if (filters.sellerVerified !== undefined) backendFilters.seller_verified = filters.sellerVerified;
-  if (filters.status) backendFilters.status = filters.status;
-  if (filters.sortBy) backendFilters.sort_by = filters.sortBy;
-  if (filters.page) backendFilters.page = filters.page;
-  if (filters.limit) backendFilters.limit = filters.limit;
-  
-  return backendFilters;
-}
-
-// Helper function to map frontend product data to backend format
-function mapProductToBackend(productData: CreateProductRequest | UpdateProductRequest) {
-  const backendData: Record<string, any> = {};
-  
-  if ('title' in productData && productData.title) backendData.title = productData.title;
-  if ('description' in productData && productData.description) backendData.description = productData.description;
-  if ('wasteType' in productData && productData.wasteType) backendData.waste_type = productData.wasteType;
-  if ('quantityKg' in productData && productData.quantityKg) backendData.quantity_kg = productData.quantityKg;
-  if ('pricePerKg' in productData && productData.pricePerKg) backendData.price_per_kg = productData.pricePerKg;
-  if ('qualityGrade' in productData && productData.qualityGrade) backendData.quality_grade = productData.qualityGrade;
-  if ('processingMethod' in productData && productData.processingMethod) backendData.processing_method = productData.processingMethod;
-  if ('originLocation' in productData && productData.originLocation) backendData.origin_location = productData.originLocation;
-  if ('harvestDate' in productData && productData.harvestDate) backendData.harvest_date = productData.harvestDate;
-  if ('expiryDate' in productData && productData.expiryDate) backendData.expiry_date = productData.expiryDate;
-  if ('moistureContent' in productData && productData.moistureContent) backendData.moisture_content = productData.moistureContent;
-  if ('organicCertified' in productData && productData.organicCertified !== undefined) backendData.organic_certified = productData.organicCertified;
-  if ('fairTradeCertified' in productData && productData.fairTradeCertified !== undefined) backendData.fair_trade_certified = productData.fairTradeCertified;
-  if ('status' in productData && productData.status) backendData.status = productData.status;
-  if ('tags' in productData && productData.tags) backendData.tags = productData.tags;
-  
-  return backendData;
-}
-
+// Products service implementation
 export const productsService = {
-  // Get all products with filters
+  // Get products with filters and pagination
   getProducts: async (filters: ProductFilters = {}): Promise<ProductsResponse> => {
     try {
       console.log('Fetching products with filters:', filters);
@@ -226,35 +34,35 @@ export const productsService = {
       });
 
       const queryString = params.toString();
-      const url = queryString ? `${API_ENDPOINTS.PRODUCTS.LIST}?${queryString}` : API_ENDPOINTS.PRODUCTS.LIST;
+      const url = queryString 
+        ? `${API_ENDPOINTS.PRODUCTS.LIST}?${queryString}`
+        : API_ENDPOINTS.PRODUCTS.LIST;
       
       const response = await api.get<any>(url);
       console.log('Backend products response:', response);
       
-      // Map response to expected format
-      const mappedProducts = response.products?.map(mapProductFromBackend) || [];
+      const mappedProducts = (response.products || []).map(mapProductFromBackend);
       
       return {
         products: mappedProducts,
         pagination: response.pagination || {
-          currentPage: 1,
-          totalPages: 1,
-          totalItems: mappedProducts.length,
+          currentPage: filters.page || 1,
+          totalPages: Math.ceil((response.total || mappedProducts.length) / (filters.limit || 12)),
+          totalItems: response.total || mappedProducts.length,
           itemsPerPage: filters.limit || 12,
-          hasNextPage: false,
-          hasPreviousPage: false,
+          hasNextPage: (filters.page || 1) < Math.ceil((response.total || mappedProducts.length) / (filters.limit || 12)),
+          hasPreviousPage: (filters.page || 1) > 1,
         },
         filters: response.filters || {
           wasteTypes: [],
           qualityGrades: [],
+          categories: [],
           priceRange: { min: 0, max: 100000 },
           locations: [],
         },
       };
     } catch (error: any) {
-      console.warn('Products API not available, using fallback:', error.message);
-      
-      // Return mock data for development
+      console.warn('Products API not available:', error.message);
       return {
         products: [],
         pagination: {
@@ -268,6 +76,7 @@ export const productsService = {
         filters: {
           wasteTypes: [],
           qualityGrades: [],
+          categories: [],
           priceRange: { min: 0, max: 100000 },
           locations: [],
         },
@@ -310,10 +119,10 @@ export const productsService = {
     try {
       console.log('Fetching featured products, limit:', limit);
       
-      const response = await api.get<any>(`/api/products/featured?limit=${limit}`);
+      const response = await api.get<any>(`${API_ENDPOINTS.PRODUCTS.FEATURED}?limit=${limit}`);
       console.log('Backend featured products response:', response);
       
-      const mappedProducts = response.products?.map(mapProductFromBackend) || [];
+      const mappedProducts = (response.products || []).map(mapProductFromBackend);
       
       return { products: mappedProducts };
     } catch (error: any) {
@@ -325,7 +134,57 @@ export const productsService = {
     }
   },
 
-  // Get products by seller
+  // Get recommended products
+  getRecommendedProducts: async (productId?: string, limit: number = 6): Promise<{ products: Product[] }> => {
+    try {
+      console.log('Fetching recommended products:', productId, limit);
+      
+      const url = productId 
+        ? `/api/products/${productId}/recommended?limit=${limit}`
+        : `/api/products/recommended?limit=${limit}`;
+      
+      const response = await api.get<any>(url);
+      console.log('Backend recommended products response:', response);
+      
+      const mappedProducts = (response.products || []).map(mapProductFromBackend);
+      
+      return { products: mappedProducts };
+    } catch (error: any) {
+      console.warn('Recommended products API not available:', error.message);
+      
+      // Fallback to random products
+      const fallbackResponse = await productsService.getProducts({ limit, sortBy: 'newest' });
+      return { products: fallbackResponse.products };
+    }
+  },
+
+  // Get product categories with counts
+  getCategories: async (): Promise<{ wasteTypes: Array<{ type: string; count: number; label?: string }> }> => {
+    try {
+      console.log('Fetching product categories');
+      
+      const response = await api.get<any>(`${API_ENDPOINTS.PRODUCTS.LIST}/categories`);
+      console.log('Backend categories response:', response);
+      
+      return {
+        wasteTypes: response.wasteTypes || response.categories || [],
+      };
+    } catch (error: any) {
+      console.warn('Categories API not available:', error.message);
+      
+      // Return default categories
+      return {
+        wasteTypes: [
+          { type: 'coffee_grounds', count: 0, label: 'Ampas Kopi' },
+          { type: 'coffee_pulp', count: 0, label: 'Pulp Kopi' },
+          { type: 'coffee_husks', count: 0, label: 'Sekam Kopi' },
+          { type: 'coffee_chaff', count: 0, label: 'Chaff Kopi' },
+        ],
+      };
+    }
+  },
+
+  // Get seller's products
   getSellerProducts: async (sellerId: string, filters: ProductFilters = {}): Promise<ProductsResponse> => {
     try {
       console.log('Fetching seller products:', sellerId, filters);
@@ -341,11 +200,11 @@ export const productsService = {
 
       const queryString = params.toString();
       const url = queryString 
-        ? `/api/products/seller/${sellerId}?${queryString}`
-        : `/api/products/seller/${sellerId}`;
+        ? `${API_ENDPOINTS.PRODUCTS.SELLER_PRODUCTS}/${sellerId}?${queryString}`
+        : `${API_ENDPOINTS.PRODUCTS.SELLER_PRODUCTS}/${sellerId}`;
       
       const response = await api.get<any>(url);
-      const mappedProducts = response.products?.map(mapProductFromBackend) || [];
+      const mappedProducts = (response.products || []).map(mapProductFromBackend);
       
       return {
         products: mappedProducts,
@@ -360,20 +219,38 @@ export const productsService = {
         filters: response.filters || {
           wasteTypes: [],
           qualityGrades: [],
+          categories: [],
           priceRange: { min: 0, max: 100000 },
           locations: [],
         },
       };
     } catch (error: any) {
       console.warn('Seller products API not available:', error.message);
-      return productsService.getProducts(filters);
+      return {
+        products: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalItems: 0,
+          itemsPerPage: filters.limit || 12,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        },
+        filters: {
+          wasteTypes: [],
+          qualityGrades: [],
+          categories: [],
+          priceRange: { min: 0, max: 100000 },
+          locations: [],
+        },
+      };
     }
   },
 
-  // Get my products (for authenticated seller)
+  // Get current user's products (for sellers)
   getMyProducts: async (filters: ProductFilters = {}): Promise<ProductsResponse> => {
     try {
-      console.log('Fetching my products:', filters);
+      console.log('Fetching my products with filters:', filters);
       
       const backendFilters = mapFiltersToBackend(filters);
       const params = new URLSearchParams();
@@ -386,11 +263,11 @@ export const productsService = {
 
       const queryString = params.toString();
       const url = queryString 
-        ? `/api/products/my?${queryString}`
-        : `/api/products/my`;
+        ? `${API_ENDPOINTS.PRODUCTS.MY_PRODUCTS}?${queryString}`
+        : API_ENDPOINTS.PRODUCTS.MY_PRODUCTS;
       
       const response = await api.get<any>(url);
-      const mappedProducts = response.products?.map(mapProductFromBackend) || [];
+      const mappedProducts = (response.products || []).map(mapProductFromBackend);
       
       return {
         products: mappedProducts,
@@ -405,6 +282,7 @@ export const productsService = {
         filters: response.filters || {
           wasteTypes: [],
           qualityGrades: [],
+          categories: [],
           priceRange: { min: 0, max: 100000 },
           locations: [],
         },
@@ -424,6 +302,7 @@ export const productsService = {
         filters: {
           wasteTypes: [],
           qualityGrades: [],
+          categories: [],
           priceRange: { min: 0, max: 100000 },
           locations: [],
         },
@@ -438,48 +317,18 @@ export const productsService = {
       
       const backendData = mapProductToBackend(data);
       
-      // Handle image upload if images are provided
-      if (data.images && data.images.length > 0) {
-        const formData = new FormData();
-        
-        // Append text fields
-        Object.entries(backendData).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            formData.append(key, value.toString());
-          }
-        });
-        
-        // Append images
-        data.images.forEach((image, index) => {
-          formData.append(`images`, image);
-        });
-
-        const response = await api.post<any>(API_ENDPOINTS.PRODUCTS.CREATE, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-        
-        const mappedProduct = mapProductFromBackend(response.product || response);
-        
-        return {
-          success: true,
-          product: mappedProduct,
-          message: response.message || 'Product created successfully',
-        };
-      } else {
-        // Create product without images
-        const response = await api.post<any>(API_ENDPOINTS.PRODUCTS.CREATE, backendData);
-        const mappedProduct = mapProductFromBackend(response.product || response);
-        
-        return {
-          success: true,
-          product: mappedProduct,
-          message: response.message || 'Product created successfully',
-        };
-      }
+      const response = await api.post<any>(API_ENDPOINTS.PRODUCTS.CREATE, backendData);
+      console.log('Backend create product response:', response);
+      
+      const mappedProduct = mapProductFromBackend(response.product || response);
+      
+      return {
+        success: response.success || true,
+        product: mappedProduct,
+        message: response.message || 'Product created successfully',
+      };
     } catch (error: any) {
-      console.error('Create product error:', error);
+      console.warn('Create product API not available:', error.message);
       throw new Error(error.message || 'Failed to create product');
     }
   },
@@ -490,16 +339,19 @@ export const productsService = {
       console.log('Updating product:', id, data);
       
       const backendData = mapProductToBackend(data);
+      
       const response = await api.put<any>(`${API_ENDPOINTS.PRODUCTS.UPDATE}/${id}`, backendData);
+      console.log('Backend update product response:', response);
+      
       const mappedProduct = mapProductFromBackend(response.product || response);
       
       return {
-        success: true,
+        success: response.success || true,
         product: mappedProduct,
         message: response.message || 'Product updated successfully',
       };
     } catch (error: any) {
-      console.error('Update product error:', error);
+      console.warn('Update product API not available:', error.message);
       throw new Error(error.message || 'Failed to update product');
     }
   },
@@ -510,104 +362,79 @@ export const productsService = {
       console.log('Deleting product:', id);
       
       const response = await api.delete<any>(`${API_ENDPOINTS.PRODUCTS.DELETE}/${id}`);
+      console.log('Backend delete product response:', response);
       
       return {
-        success: true,
+        success: response.success || true,
         message: response.message || 'Product deleted successfully',
       };
     } catch (error: any) {
-      console.error('Delete product error:', error);
+      console.warn('Delete product API not available:', error.message);
       throw new Error(error.message || 'Failed to delete product');
     }
   },
 
   // Upload product images
-  uploadProductImages: async (id: string, images: File[]): Promise<{ imageUrls: string[]; message: string }> => {
+  uploadProductImages: async (productId: string, images: File[]): Promise<UploadImagesResponse> => {
     try {
-      console.log('Uploading product images:', id, images.length);
+      console.log('Uploading product images:', productId, images.length);
       
       const formData = new FormData();
-      images.forEach((image) => {
-        formData.append('images', image);
+      formData.append('productId', productId);
+      
+      images.forEach((image, index) => {
+        formData.append(`images`, image);
       });
-
-      const response = await api.post<any>(`/api/products/${id}/images`, formData, {
+      
+      const response = await api.post<any>(`${API_ENDPOINTS.PRODUCTS.UPLOAD_IMAGES}/${productId}/images`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
       
+      console.log('Backend upload images response:', response);
+      
       return {
-        imageUrls: response.image_urls || response.imageUrls || [],
+        success: response.success || true,
+        imageUrls: response.imageUrls || response.image_urls || [],
         message: response.message || 'Images uploaded successfully',
       };
     } catch (error: any) {
-      console.error('Upload images error:', error);
+      console.warn('Upload images API not available:', error.message);
       throw new Error(error.message || 'Failed to upload images');
     }
   },
 
-  // Get product categories
-  getCategories: async (): Promise<{ wasteTypes: Array<{ type: string; label: string; count: number }> }> => {
+  // Toggle favorite product
+  toggleFavorite: async (productId: string): Promise<{ success: boolean; isFavorite: boolean; message: string }> => {
     try {
-      console.log('Fetching product categories');
+      console.log('Toggling favorite for product:', productId);
       
-      const response = await api.get<any>('/api/products/categories');
-      
-      return {
-        wasteTypes: response.waste_types || response.wasteTypes || [],
-      };
-    } catch (error: any) {
-      console.warn('Categories API not available:', error.message);
-      
-      // Return default categories
-      return {
-        wasteTypes: [
-          { type: 'coffee_grounds', label: 'Ampas Kopi', count: 0 },
-          { type: 'coffee_pulp', label: 'Pulp Kopi', count: 0 },
-          { type: 'coffee_husks', label: 'Kulit Kopi', count: 0 },
-          { type: 'coffee_chaff', label: 'Sekam Kopi', count: 0 },
-        ],
-      };
-    }
-  },
-
-  // Toggle product favorite
-  toggleFavorite: async (id: string): Promise<{ isFavorite: boolean; message: string }> => {
-    try {
-      console.log('Toggling product favorite:', id);
-      
-      const response = await api.post<any>(`/api/products/${id}/favorite`);
+      const response = await api.post<any>(`${API_ENDPOINTS.PRODUCTS.TOGGLE_FAVORITE}/${productId}/favorite`);
+      console.log('Backend toggle favorite response:', response);
       
       return {
-        isFavorite: response.is_favorite || response.isFavorite || false,
+        success: response.success || true,
+        isFavorite: response.isFavorite || response.is_favorite || false,
         message: response.message || 'Favorite status updated',
       };
     } catch (error: any) {
-      console.error('Toggle favorite error:', error);
+      console.warn('Toggle favorite API not available:', error.message);
       throw new Error(error.message || 'Failed to update favorite status');
     }
   },
+};
 
-  // Get product recommendations
-  getRecommendedProducts: async (productId?: string, limit: number = 6): Promise<{ products: Product[] }> => {
-    try {
-      console.log('Fetching recommended products:', productId, limit);
-      
-      const url = productId 
-        ? `/api/products/recommended?product_id=${productId}&limit=${limit}`
-        : `/api/products/recommended?limit=${limit}`;
-      
-      const response = await api.get<any>(url);
-      const mappedProducts = response.products?.map(mapProductFromBackend) || [];
-      
-      return { products: mappedProducts };
-    } catch (error: any) {
-      console.warn('Recommended products API not available:', error.message);
-      
-      // Fallback to popular products
-      const fallbackResponse = await productsService.getProducts({ limit, sortBy: 'popular' });
-      return { products: fallbackResponse.products };
-    }
-  },
+// Export service and types
+export default productsService;
+export type {
+  Product,
+  ProductFilters,
+  ProductsResponse,
+  CreateProductRequest,
+  CreateProductResponse,
+  UpdateProductRequest,
+  UpdateProductResponse,
+  UploadImagesRequest,
+  UploadImagesResponse,
 };
