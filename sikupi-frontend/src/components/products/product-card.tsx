@@ -1,257 +1,321 @@
+// FILE PATH: /sikupi-frontend/src/components/products/product-card.tsx
+
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, MapPin, Star, ShoppingCart, Verified } from "lucide-react";
+import { 
+  Heart, 
+  MapPin, 
+  Star, 
+  Package, 
+  User, 
+  Eye,
+  ShoppingCart,
+  Verified
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { useCartStore } from "@/stores/cart-store";
-import { useProductStore, type Product } from "@/stores/product-store";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { type Product } from "@/lib/api/services/products";
+import { useToggleFavorite } from "@/lib/hooks/use-products";
+import { useAuthStore } from "@/stores/auth-store";
 
 interface ProductCardProps {
   product: Product;
   variant?: "default" | "compact" | "featured";
-  showAddToCart?: boolean;
+  showQuickAdd?: boolean;
   className?: string;
 }
 
-const GRADE_COLORS = {
-  A: "bg-green-100 text-green-800 border-green-200",
-  B: "bg-yellow-100 text-yellow-800 border-yellow-200", 
-  C: "bg-red-100 text-red-800 border-red-200",
-};
-
-const GRADE_LABELS = {
-  A: "Grade A - Sangat Baik",
-  B: "Grade B - Baik",
-  C: "Grade C - Cukup",
-};
-
-export function ProductCard({ 
-  product, 
-  variant = "default", 
-  showAddToCart = true,
-  className 
+export function ProductCard({
+  product,
+  variant = "default",
+  showQuickAdd = true,
+  className,
 }: ProductCardProps) {
-  const { addItem, isInCart } = useCartStore();
-  const { toggleFavorite } = useProductStore();
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+  
+  const { isAuthenticated } = useAuthStore();
+  const toggleFavoriteMutation = useToggleFavorite();
 
-  const formatPrice = (price: number) => {
+  // Format currency
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price);
+    }).format(amount);
   };
 
+  // Format weight
+  const formatWeight = (kg: number) => {
+    return kg >= 1 ? `${kg} kg` : `${kg * 1000} g`;
+  };
+
+  // Get grade color
+  const getGradeColor = (grade: string) => {
+    switch (grade) {
+      case 'A':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'B':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'C':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'D':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  // Get waste type label
+  const getWasteTypeLabel = (wasteType: string) => {
+    switch (wasteType) {
+      case 'coffee_grounds':
+        return 'Ampas Kopi';
+      case 'coffee_pulp':
+        return 'Pulp Kopi';
+      case 'coffee_husks':
+        return 'Kulit Kopi';
+      case 'coffee_chaff':
+        return 'Sekam Kopi';
+      default:
+        return wasteType;
+    }
+  };
+
+  // Handle favorite toggle
+  const handleFavoriteToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isAuthenticated) {
+      // Redirect to login or show login modal
+      return;
+    }
+    
+    toggleFavoriteMutation.mutate(product.id);
+  };
+
+  // Handle add to cart
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    try {
-      addItem({
-        productId: product.id,
-        title: product.title,
-        price: product.price,
-        weight: product.weight,
-        image: product.images[0],
-        sellerId: product.sellerId,
-        sellerName: product.sellerName,
-        location: product.location,
-        grade: product.grade,
-        stock: product.stock,
-      });
+    if (!isAuthenticated) {
+      // Redirect to login or show login modal
+      return;
+    }
+    
+    // TODO: Add to cart logic
+    console.log('Add to cart:', product.id);
+  };
 
-      toast.success("Produk ditambahkan ke keranjang", {
-        description: product.title,
-      });
-    } catch (error) {
-      toast.error("Gagal menambahkan ke keranjang");
+  // Get card dimensions based on variant
+  const getCardClasses = () => {
+    switch (variant) {
+      case "compact":
+        return "w-full max-w-[200px]";
+      case "featured":
+        return "w-full";
+      default:
+        return "w-full";
     }
   };
 
-  const handleToggleFavorite = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    toggleFavorite(product.id);
-    
-    toast.success(
-      product.isFavorite ? "Dihapus dari favorit" : "Ditambahkan ke favorit",
-      { description: product.title }
-    );
+  // Get image dimensions based on variant
+  const getImageClasses = () => {
+    switch (variant) {
+      case "compact":
+        return "h-32";
+      case "featured":
+        return "h-56";
+      default:
+        return "h-48";
+    }
   };
 
-  const cardContent = (
-    <Card className={cn(
-      "group hover:shadow-medium transition-all duration-300 overflow-hidden",
-      variant === "featured" && "border-primary/20",
-      className
-    )}>
-      <div className="relative">
-        {/* Product Image */}
-        <div className={cn(
-          "relative overflow-hidden bg-muted",
-          variant === "compact" ? "h-32" : "h-48 sm:h-56"
-        )}>
-          <Image
-            src={product.images[0] || "/placeholder-product.jpg"}
-            alt={product.title}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-          
-          {/* Overlay buttons */}
-          <div className="absolute top-2 right-2 flex flex-col gap-2">
-            {/* Favorite button */}
+  const primaryImage = product.imageUrls?.[0] || '/placeholder-product.jpg';
+
+  return (
+    <Card className={cn(getCardClasses(), "group hover:shadow-lg transition-all duration-200", className)}>
+      <Link href={`/produk/${product.id}`}>
+        <div className="relative overflow-hidden rounded-t-lg">
+          {/* Product Image */}
+          <div className={cn("relative bg-gray-100", getImageClasses())}>
+            {!imageError ? (
+              <Image
+                src={primaryImage}
+                alt={product.title}
+                fill
+                className={cn(
+                  "object-cover transition-all duration-300 group-hover:scale-105",
+                  imageLoading ? "opacity-0" : "opacity-100"
+                )}
+                onLoad={() => setImageLoading(false)}
+                onError={() => {
+                  setImageError(true);
+                  setImageLoading(false);
+                }}
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                <Package className="w-12 h-12 text-gray-400" />
+              </div>
+            )}
+            
+            {/* Loading skeleton */}
+            {imageLoading && !imageError && (
+              <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+            )}
+          </div>
+
+          {/* Overlay badges */}
+          <div className="absolute top-3 left-3 flex flex-col gap-2">
+            {/* Grade badge */}
+            <Badge className={cn("text-xs font-medium", getGradeColor(product.qualityGrade))}>
+              Grade {product.qualityGrade}
+            </Badge>
+            
+            {/* Organic certified badge */}
+            {product.organicCertified && (
+              <Badge className="bg-green-600 text-white text-xs">
+                Organik
+              </Badge>
+            )}
+            
+            {/* Fair trade badge */}
+            {product.fairTradeCertified && (
+              <Badge className="bg-blue-600 text-white text-xs">
+                Fair Trade
+              </Badge>
+            )}
+          </div>
+
+          {/* Favorite button */}
+          <div className="absolute top-3 right-3">
             <Button
+              variant="ghost"
               size="sm"
-              variant="secondary"
-              className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
-              onClick={handleToggleFavorite}
+              className="h-8 w-8 p-0 bg-white/80 hover:bg-white"
+              onClick={handleFavoriteToggle}
+              disabled={toggleFavoriteMutation.isPending}
             >
               <Heart 
                 className={cn(
-                  "h-4 w-4",
-                  product.isFavorite ? "fill-red-500 text-red-500" : "text-muted-foreground"
+                  "h-4 w-4 transition-colors",
+                  // product.isFavorite ? "fill-red-500 text-red-500" : "text-gray-600"
+                  "text-gray-600" // TODO: Add isFavorite to Product type
                 )}
               />
             </Button>
           </div>
 
-          {/* Badges */}
-          <div className="absolute top-2 left-2 flex flex-col gap-1">
-            {product.discount && (
+          {/* Status indicators */}
+          <div className="absolute bottom-3 left-3 flex gap-2">
+            {!product.isAvailable && (
               <Badge variant="destructive" className="text-xs">
-                -{product.discount}%
+                Habis
               </Badge>
             )}
             
-            {product.isVerified && (
-              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
-                <Verified className="h-3 w-3 mr-1" />
-                Verified
+            {product.status === 'inactive' && (
+              <Badge variant="secondary" className="text-xs">
+                Tidak Aktif
               </Badge>
             )}
           </div>
-
-          {/* Out of stock overlay */}
-          {product.stock <= 0 && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <Badge variant="secondary" className="bg-white text-black">
-                Stok Habis
-              </Badge>
-            </div>
-          )}
         </div>
 
         <CardContent className="p-4">
-          {/* Grade and Category */}
-          <div className="flex items-center gap-2 mb-2">
-            <Badge 
-              variant="outline" 
-              className={cn("text-xs", GRADE_COLORS[product.grade])}
-              title={GRADE_LABELS[product.grade]}
-            >
-              Grade {product.grade}
-            </Badge>
-            <span className="text-xs text-muted-foreground capitalize">
-              {product.category}
-            </span>
-          </div>
-
-          {/* Title */}
-          <h3 className={cn(
-            "font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors",
-            variant === "compact" ? "text-sm" : "text-base"
-          )}>
+          {/* Product title */}
+          <h3 className="font-semibold text-sm line-clamp-2 mb-2 group-hover:text-primary transition-colors">
             {product.title}
           </h3>
 
-          {/* Price */}
-          <div className="flex items-baseline gap-2 mb-3">
-            <span className={cn(
-              "font-bold text-primary",
-              variant === "compact" ? "text-base" : "text-lg"
-            )}>
-              {formatPrice(product.price)}
-            </span>
-            {product.originalPrice && product.originalPrice > product.price && (
-              <span className="text-sm text-muted-foreground line-through">
-                {formatPrice(product.originalPrice)}
-              </span>
-            )}
-            <span className="text-xs text-muted-foreground">/kg</span>
-          </div>
+          {/* Waste type */}
+          <p className="text-xs text-muted-foreground mb-2">
+            {getWasteTypeLabel(product.wasteType)}
+          </p>
 
-          {/* Seller Info */}
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center gap-1">
-              <MapPin className="h-3 w-3 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground line-clamp-1">
-                {product.location}
-              </span>
-            </div>
-          </div>
-
+          {/* Price and quantity */}
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1">
-              <span className="text-sm font-medium">{product.sellerName}</span>
-              {product.isVerified && (
-                <Verified className="h-4 w-4 text-blue-500" />
-              )}
+            <div>
+              <p className="text-lg font-bold text-primary">
+                {formatCurrency(product.pricePerKg)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                per kg • {formatWeight(product.quantityKg)} tersedia
+              </p>
             </div>
-            
-            {product.rating > 0 && (
-              <div className="flex items-center gap-1">
-                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                <span className="text-sm font-medium">{product.rating.toFixed(1)}</span>
-                <span className="text-xs text-muted-foreground">
-                  ({product.reviewCount})
-                </span>
-              </div>
-            )}
           </div>
 
-          {/* Stock info */}
-          {variant !== "compact" && (
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
-              <span>Stok: {product.stock} kg</span>
-              <span>Min. order: {product.minOrder || 1} kg</span>
+          {/* Seller info */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+              <User className="w-3 h-3 text-gray-600" />
             </div>
-          )}
-
-          {/* Add to Cart Button */}
-          {showAddToCart && product.stock > 0 && (
-            <Button
-              onClick={handleAddToCart}
-              className="w-full"
-              size={variant === "compact" ? "sm" : "default"}
-              disabled={isInCart(product.id)}
-            >
-              {isInCart(product.id) ? (
-                <>
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  Sudah di Keranjang
-                </>
-              ) : (
-                <>
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  Tambah ke Keranjang
-                </>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium truncate flex items-center gap-1">
+                {product.sellerName}
+                {product.sellerVerified && (
+                  <Verified className="w-3 h-3 text-blue-500" />
+                )}
+              </p>
+              {product.sellerRating && (
+                <div className="flex items-center gap-1">
+                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                  <span className="text-xs text-muted-foreground">
+                    {product.sellerRating.toFixed(1)} ({product.sellerReviewCount || 0})
+                  </span>
+                </div>
               )}
-            </Button>
+            </div>
+          </div>
+
+          {/* Location */}
+          <div className="flex items-center gap-1 mb-2">
+            <MapPin className="w-3 h-3 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground truncate">
+              {product.originLocation}
+            </span>
+          </div>
+
+          {/* Stats */}
+          {variant !== "compact" && (
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Eye className="w-3 h-3" />
+                <span>{product.viewsCount || 0}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Heart className="w-3 h-3" />
+                <span>{product.favoritesCount || 0}</span>
+              </div>
+            </div>
           )}
         </CardContent>
-      </div>
-    </Card>
-  );
 
-  return (
-    <Link href={`/produk/${product.id}`} className="block">
-      {cardContent}
-    </Link>
+        {/* Quick add to cart */}
+        {showQuickAdd && variant !== "compact" && (
+          <CardFooter className="p-4 pt-0">
+            <Button
+              className="w-full"
+              size="sm"
+              onClick={handleAddToCart}
+              disabled={!product.isAvailable}
+            >
+              <ShoppingCart className="w-4 h-4 mr-2" />
+              {product.isAvailable ? "Tambah ke Keranjang" : "Tidak Tersedia"}
+            </Button>
+          </CardFooter>
+        )}
+      </Link>
+    </Card>
   );
 }
