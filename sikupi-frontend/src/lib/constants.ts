@@ -101,7 +101,6 @@ export const NAV_LINKS = [
   { href: "/edukasi", label: "Edukasi" },
   { href: "ai-assessment", label: "AI Assessment" },
   { href: "/chatbot", label: "Chatbot" },
-  { href: "/tentang", label: "Tentang Kami" },
 ];
 
 // Menu untuk pengguna yang sudah login
