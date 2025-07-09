@@ -1,4 +1,3 @@
-// FILE: src/components/dashboard/dashboard-card.tsx
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,24 +20,25 @@ export function DashboardCard({
   icon: Icon,
   className 
 }: DashboardCardProps) {
+  // DIUBAH: Menggunakan warna dari tema
   const changeColors = {
-    positive: "text-green-600",
-    negative: "text-red-600",
-    neutral: "text-gray-600"
+    positive: "text-emerald-600 dark:text-emerald-500",
+    negative: "text-destructive",
+    neutral: "text-muted-foreground"
   };
 
   return (
     <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-gray-600">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
         {Icon && (
-          <Icon className="h-4 w-4 text-gray-400" />
+          <Icon className="h-4 w-4 text-muted-foreground" />
         )}
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold text-gray-900">
+        <div className="text-2xl font-bold text-foreground">
           {value}
         </div>
         {change && (

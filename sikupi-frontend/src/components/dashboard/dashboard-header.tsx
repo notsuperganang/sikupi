@@ -1,7 +1,6 @@
-// FILE: src/components/dashboard/dashboard-header.tsx
 "use client";
 
-import { Bell, Search, Menu } from "lucide-react";
+import { Bell, Search, Menu, Package, ShoppingCart, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -13,73 +12,89 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuthStore } from "@/stores/auth-store";
 import { useLogout } from "@/lib/hooks/use-auth";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+
+const navLinks = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/dashboard/produk", label: "Produk" },
+  { href: "/dashboard/pesanan", label: "Pesanan" },
+];
 
 export function DashboardHeader() {
   const { user } = useAuthStore();
   const logoutMutation = useLogout();
+  const pathname = usePathname();
 
   const handleLogout = () => {
     logoutMutation.mutate();
   };
 
+  const NavLinks = ({ isMobile = false }) => (
+    <nav className={cn("flex items-center gap-4 lg:gap-6", isMobile && "flex-col items-start")}>
+      {navLinks.map((link) => (
+        <Link
+          key={link.href}
+          href={link.href}
+          className={cn(
+            "transition-colors hover:text-foreground",
+            pathname === link.href ? "text-foreground font-semibold" : "text-muted-foreground",
+            isMobile ? "text-lg" : "text-sm"
+          )}
+        >
+          {link.label}
+        </Link>
+      ))}
+    </nav>
+  );
+
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <header className="bg-background border-b sticky top-0 z-40">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo & Navigation */}
-          <div className="flex items-center space-x-8">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="h-8 w-8 rounded-full bg-green-600 flex items-center justify-center">
-                <span className="text-white font-bold text-sm">S</span>
-              </div>
-              <span className="text-xl font-bold text-green-600">Sikupi</span>
-            </Link>
-            
-            <nav className="hidden md:flex items-center space-x-6">
-              <Link 
-                href="/dashboard" 
-                className="text-sm font-medium hover:text-green-600 transition-colors"
-              >
-                Dashboard
-              </Link>
-              <Link 
-                href="/dashboard/produk" 
-                className="text-sm font-medium hover:text-green-600 transition-colors"
-              >
-                Produk
-              </Link>
-              <Link 
-                href="/dashboard/pesanan" 
-                className="text-sm font-medium hover:text-green-600 transition-colors"
-              >
-                Pesanan
-              </Link>
-            </nav>
-          </div>
+          <div className="flex items-center gap-6">
+            {/* Mobile Menu */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="md:hidden">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64">
+                <div className="p-4">
+                  <h3 className="text-lg font-semibold mb-6">Menu</h3>
+                  <NavLinks isMobile />
+                </div>
+              </SheetContent>
+            </Sheet>
 
-          {/* Search */}
-          <div className="hidden md:flex flex-1 max-w-md mx-8">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Cari produk atau pesanan..."
-                className="pl-10"
-              />
+            {/* Desktop Navigation (Logo Removed) */}
+            <div className="hidden md:flex">
+              <NavLinks />
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-4">
+            {/* Search */}
+            <div className="relative hidden sm:block">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Cari..."
+                className="pl-10 w-40 lg:w-64"
+              />
+            </div>
+
             {/* Notifications */}
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               <Badge 
                 variant="destructive" 
-                className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 flex items-center justify-center text-xs"
               >
                 3
               </Badge>
@@ -88,9 +103,9 @@ export function DashboardHeader() {
             {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <span className="text-green-600 font-medium text-sm">
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-primary font-medium">
                       {user?.fullName?.charAt(0)?.toUpperCase()}
                     </span>
                   </div>
@@ -112,13 +127,10 @@ export function DashboardHeader() {
                   <Link href="/dashboard/profil">Profil</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/pengaturan">Pengaturan</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
                   <Link href="/">Kembali ke Beranda</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                   Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
