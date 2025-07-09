@@ -29,7 +29,7 @@ export default function DashboardPage() {
         <div className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-24 bg-gray-200 rounded-lg animate-pulse" />
+              <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
             ))}
           </div>
         </div>
@@ -37,15 +37,16 @@ export default function DashboardPage() {
     );
   }
 
-  const statusColors = {
-    pending: "bg-yellow-100 text-yellow-800",
-    processing: "bg-blue-100 text-blue-800",
-    shipped: "bg-green-100 text-green-800",
-    delivered: "bg-gray-100 text-gray-800",
-    cancelled: "bg-red-100 text-red-800",
+  // Menggunakan warna yang lebih sesuai dengan tema
+  const statusColors: { [key: string]: string } = {
+    pending: "border-yellow-500/50 bg-yellow-500/10 text-yellow-700",
+    processing: "border-blue-500/50 bg-blue-500/10 text-blue-700",
+    shipped: "border-primary/50 bg-primary/10 text-primary",
+    delivered: "border-gray-500/50 bg-gray-500/10 text-muted-foreground",
+    cancelled: "border-destructive/50 bg-destructive/10 text-destructive",
   };
 
-  const statusLabels = {
+  const statusLabels: { [key: string]: string } = {
     pending: "Menunggu",
     processing: "Diproses",
     shipped: "Dikirim",
@@ -57,11 +58,12 @@ export default function DashboardPage() {
     <DashboardLayout>
       <div className="space-y-8">
         {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white">
+        {/* DIUBAH: Menggunakan warna primer dari tema */}
+        <div className="bg-primary rounded-lg p-6 text-primary-foreground">
           <h1 className="text-2xl font-bold mb-2">
             Selamat Datang di Dashboard Sikupi!
           </h1>
-          <p className="text-green-100">
+          <p className="text-primary-foreground/80">
             Kelola produk dan pesanan ampas kopi Anda dengan mudah
           </p>
         </div>
@@ -119,16 +121,17 @@ export default function DashboardPage() {
                   <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex-1">
                       <h4 className="font-medium text-sm">{order.orderNumber}</h4>
-                      <p className="text-sm text-gray-600">{order.customerName}</p>
-                      <p className="text-xs text-gray-500">{order.productTitle}</p>
+                      <p className="text-sm text-muted-foreground">{order.customerName}</p>
+                      <p className="text-xs text-muted-foreground">{order.productTitle}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-medium text-sm">{formatCurrency(order.total)}</p>
+                      {/* DIUBAH: Menggunakan kelas warna yang lebih baik */}
                       <Badge 
                         variant="outline" 
-                        className={`text-xs ${statusColors[order.status as keyof typeof statusColors]}`}
+                        className={`text-xs border ${statusColors[order.status] || statusColors.delivered}`}
                       >
-                        {statusLabels[order.status as keyof typeof statusLabels]}
+                        {statusLabels[order.status] || statusLabels.delivered}
                       </Badge>
                     </div>
                   </div>
@@ -155,19 +158,20 @@ export default function DashboardPage() {
                 {activity?.products?.slice(0, 5).map((product, index) => (
                   <div key={product.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center space-x-3">
-                      <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                        <span className="text-green-600 font-medium text-sm">
+                      {/* DIUBAH: Menggunakan warna primer */}
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-primary font-medium text-sm">
                           {index + 1}
                         </span>
                       </div>
                       <div>
                         <h4 className="font-medium text-sm">{product.title}</h4>
-                        <p className="text-xs text-gray-500">{product.sales} terjual</p>
+                        <p className="text-xs text-muted-foreground">{product.sales} terjual</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="font-medium text-sm">{formatCurrency(product.revenue)}</p>
-                      <div className="flex items-center text-xs text-gray-500">
+                      <div className="flex items-center text-xs text-muted-foreground">
                         <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 mr-1" />
                         4.8
                       </div>
@@ -185,6 +189,7 @@ export default function DashboardPage() {
             <CardTitle>Aksi Cepat</CardTitle>
           </CardHeader>
           <CardContent>
+            {/* DIUBAH: Menggunakan warna primer untuk tombol utama */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Button asChild className="h-16">
                 <Link href="/dashboard/produk?action=create">
