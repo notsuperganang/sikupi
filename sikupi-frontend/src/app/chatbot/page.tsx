@@ -1,410 +1,314 @@
-// FILE: src/app/ai-assessment/page.tsx
+// FILE: src/app/chatbot/page.tsx
 
 "use client";
 
-import { useState } from "react";
-import { MainLayout } from "@/components/layout/main-layout"; // ADDED: Import MainLayout
+import { useState, useRef, useEffect } from "react";
+import { MainLayout } from "@/components/layout/main-layout"; // Pastikan untuk membungkus dengan MainLayout
 import { Container } from "@/components/common/container";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Camera, 
-  Upload, 
-  Brain, 
-  Zap, 
-  Target, 
-  BarChart3,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Info,
+  Bot, 
+  Send, 
+  Mic, 
+  MicOff, 
+  Volume2, 
+  VolumeX, 
+  MessageSquare,
   Sparkles,
+  Clock,
   TrendingUp,
-  Shield,
-  FileText,
-  Settings
+  Users,
+  Star,
+  AlertCircle,
+  Settings,
+  BookOpen,
+  HelpCircle,
+  Zap,
+  Brain,
+  User,
+  History
 } from "lucide-react";
 
-export default function AIAssessmentPage() {
-  const [activeTab, setActiveTab] = useState("upload");
+// --- INTERFACES ---
+interface Message {
+  id: string;
+  type: 'user' | 'bot';
+  content: string;
+  timestamp: Date;
+}
 
-  const features = [
+interface ChatHistoryItem {
+  id: string;
+  title: string;
+  date: string;
+  messageCount: number;
+}
+
+// --- MAIN COMPONENT ---
+export default function ChatbotPage() {
+  const [messages, setMessages] = useState<Message[]>([
     {
-      icon: <Brain className="h-8 w-8 text-blue-500" />,
-      title: "AI Quality Assessment",
-      description: "Analisis kualitas ampas kopi menggunakan teknologi AI terdepan",
-      status: "Dalam Pengembangan"
-    },
-    {
-      icon: <Camera className="h-8 w-8 text-green-500" />,
-      title: "Image Recognition",
-      description: "Deteksi otomatis karakteristik ampas kopi dari foto",
-      status: "Dalam Pengembangan"
-    },
-    {
-      icon: <BarChart3 className="h-8 w-8 text-purple-500" />,
-      title: "Grading System",
-      description: "Penilaian grade A, B, C, D berdasarkan standar kualitas",
-      status: "Dalam Pengembangan"
-    },
-    {
-      icon: <Target className="h-8 w-8 text-orange-500" />,
-      title: "Recommendation Engine",
-      description: "Saran pengolahan dan pemanfaatan optimal",
-      status: "Dalam Pengembangan"
+      id: '1',
+      type: 'bot',
+      content: 'Halo! Saya SikupiBot, asisten AI untuk membantu Anda dengan segala hal tentang ampas kopi dan marketplace Sikupi. Ada yang bisa saya bantu?',
+      timestamp: new Date()
     }
+  ]);
+  const [inputValue, setInputValue] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [activeTab, setActiveTab] = useState('chat');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // --- MOCK DATA ---
+  const mockBotResponses = [
+    "Ampas kopi memiliki banyak manfaat! Bisa dijadikan pupuk organik, scrub alami, pengusir hama, hingga media tanam. Mau tahu lebih detail tentang penggunaan tertentu?",
+    "Untuk menjual ampas kopi di Sikupi, Anda perlu membuat akun seller terlebih dahulu. Kemudian upload foto produk, tentukan harga, dan deskripsikan kualitas ampas kopi Anda.",
+    "Grade ampas kopi ditentukan berdasarkan tekstur, warna, kadar air, dan kontaminasi. Grade A adalah kualitas terbaik dengan tekstur halus dan konsisten.",
+    "Anda bisa menggunakan fitur AI Assessment untuk mendapatkan analisis otomatis kualitas ampas kopi. Cukup upload foto dan sistem akan memberikan grade dan rekomendasi.",
+    "Untuk memulai di Sikupi, daftarkan akun terlebih dahulu. Pilih sebagai buyer untuk membeli atau seller untuk menjual. Lengkapi profil dan mulai bertransaksi!",
+    "Harga ampas kopi bervariasi tergantung kualitas dan kuantitas. Grade A biasanya Rp 2.000-3.000/kg, sedangkan grade B sekitar Rp 1.000-2.000/kg."
   ];
 
-  const mockAssessmentData = [
-    {
-      id: 1,
-      image: "/api/placeholder/150/150",
-      grade: "A",
-      score: 92,
-      date: "2024-01-15",
-      characteristics: ["Tekstur Halus", "Warna Konsisten", "Kadar Air Optimal"]
-    },
-    {
-      id: 2,
-      image: "/api/placeholder/150/150",
-      grade: "B",
-      score: 78,
-      date: "2024-01-14",
-      characteristics: ["Tekstur Sedang", "Warna Baik", "Sedikit Kontaminasi"]
-    },
-    {
-      id: 3,
-      image: "/api/placeholder/150/150",
-      grade: "B",
-      score: 85,
-      date: "2024-01-13",
-      characteristics: ["Tekstur Baik", "Warna Seragam", "Kadar Air Baik"]
-    }
+  const quickQuestions = [
+    "Apa itu ampas kopi?",
+    "Bagaimana cara menjual?",
+    "Berapa harga ampas kopi?",
+    "Cara menggunakan AI Assessment?",
+    "Grade ampas kopi apa saja?",
+    "Manfaat ampas kopi untuk tanaman?"
+  ];
+  
+  const chatHistory: ChatHistoryItem[] = [
+    { id: 'h1', title: 'Manfaat pupuk organik', date: 'Kemarin', messageCount: 12 },
+    { id: 'h2', title: 'Cara registrasi seller', date: '2 hari lalu', messageCount: 8 },
+    { id: 'h3', title: 'Perbedaan grade ampas', date: '5 hari lalu', messageCount: 21 },
+    { id: 'h4', title: 'Detail AI Assessment', date: '1 minggu lalu', messageCount: 15 },
   ];
 
-  const getGradeColor = (grade: string) => {
-    switch (grade) {
-      case "A": return "bg-green-500 text-white";
-      case "B": return "bg-blue-500 text-white";
-      case "C": return "bg-yellow-500 text-white";
-      case "D": return "bg-red-500 text-white";
-      default: return "bg-gray-500 text-white";
+  const chatStats = [
+    { label: "Total Percakapan", value: "2,847", icon: <MessageSquare className="h-5 w-5" /> },
+    { label: "Rata-rata Respons", value: "0.8s", icon: <Clock className="h-5 w-5" /> },
+    { label: "Tingkat Kepuasan", value: "94%", icon: <Star className="h-5 w-5" /> },
+    { label: "Pengguna Aktif", value: "1,245", icon: <Users className="h-5 w-5" /> }
+  ];
+
+  // --- FUNCTIONS ---
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
+  
+  const handleSendMessage = (content: string) => {
+    if (!content.trim()) return;
+
+    const userMessage: Message = { id: Date.now().toString(), type: 'user', content, timestamp: new Date() };
+    setMessages(prev => [...prev, userMessage]);
+    
+    if(content === inputValue) {
+        setInputValue('');
     }
+
+    setIsTyping(true);
+
+    setTimeout(() => {
+      const botResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'bot',
+        content: mockBotResponses[Math.floor(Math.random() * mockBotResponses.length)],
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, botResponse]);
+      setIsTyping(false);
+    }, 1500);
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSendMessage(inputValue);
+  };
+  
+  // --- RENDER ---
   return (
-    // WRAPPED: The entire page content is now inside MainLayout
     <MainLayout>
-      <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         <Container className="py-8">
-          {/* Header */}
           <div className="text-center mb-8">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <div className="p-3 bg-primary/10 rounded-full">
-                <Sparkles className="h-8 w-8 text-primary" />
-              </div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-                AI Assessment
-              </h1>
+            <div className="inline-flex items-center justify-center gap-2 mb-4 p-2 bg-primary/10 rounded-full">
+              <Bot className="h-10 w-10 text-primary" />
             </div>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Teknologi AI canggih untuk menganalisis kualitas ampas kopi secara otomatis dan memberikan rekomendasi terbaik
+            <h1 className="text-4xl font-bold tracking-tight">SikupiBot</h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mt-2">
+              Asisten AI cerdas untuk membantu Anda memahami ampas kopi dan menggunakan platform Sikupi.
             </p>
           </div>
 
-          {/* Development Alert */}
-          <Alert className="mb-8 border-amber-200 bg-amber-50">
-            <AlertCircle className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-800">
-              <strong>Fitur Dalam Pengembangan:</strong> AI Assessment sedang dalam tahap pengembangan. 
-              Preview ini menampilkan tampilan dan fitur yang akan tersedia.
-            </AlertDescription>
+          <Alert className="mb-8 border-amber-200 bg-amber-50 text-amber-900">
+            <AlertCircle className="h-4 w-4 !text-amber-600" />
+            <div>
+                <div className="font-bold">Fitur Dalam Pengembangan</div>
+                <AlertDescription>
+                    Chatbot AI ini masih dalam tahap pengembangan. Halaman ini adalah preview tampilan dan fitur yang akan tersedia.
+                </AlertDescription>
+            </div>
           </Alert>
 
-          {/* Main Content */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="upload">Upload & Assess</TabsTrigger>
-              <TabsTrigger value="history">Riwayat</TabsTrigger>
-              <TabsTrigger value="analytics">Analitik</TabsTrigger>
-              <TabsTrigger value="settings">Pengaturan</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+              <TabsTrigger value="chat"><Zap className="w-4 h-4 mr-2"/>Chat</TabsTrigger>
+              <TabsTrigger value="history"><History className="w-4 h-4 mr-2"/>Riwayat</TabsTrigger>
+              <TabsTrigger value="analytics"><TrendingUp className="w-4 h-4 mr-2"/>Analitik</TabsTrigger>
+              <TabsTrigger value="settings"><Settings className="w-4 h-4 mr-2"/>Pengaturan</TabsTrigger>
             </TabsList>
 
-            {/* Upload & Assessment Tab */}
-            <TabsContent value="upload" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Upload Section */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Upload className="h-5 w-5" />
-                      Upload Foto Ampas Kopi
-                    </CardTitle>
-                    <CardDescription>
-                      Upload foto ampas kopi untuk mendapatkan analisis AI
-                    </CardDescription>
-                  </CardHeader>
+            {/* Chat Tab */}
+            <TabsContent value="chat" className="mt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <Card className="lg:col-span-1 hidden lg:block">
+                  <CardHeader><CardTitle className="text-lg flex items-center gap-2"><HelpCircle className="h-5 w-5 text-primary"/>Pertanyaan Cepat</CardTitle></CardHeader>
                   <CardContent>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                      <Camera className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                      <p className="text-sm text-gray-600 mb-4">
-                        Drag & drop foto atau klik untuk upload
-                      </p>
-                      <Button disabled className="mb-2">
-                        <Upload className="mr-2 h-4 w-4" />
-                        Pilih Foto
-                      </Button>
-                      <p className="text-xs text-muted-foreground">
-                        Format: JPG, PNG, WebP (Max 5MB)
-                      </p>
-                    </div>
-                    
-                    <div className="mt-6 space-y-3">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        Foto jelas dan fokus
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        Pencahayaan yang baik
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        Tampilan penuh ampas kopi
-                      </div>
+                    <div className="space-y-2">
+                      {quickQuestions.map((q, i) => (
+                        <Button key={i} variant="ghost" className="w-full justify-start text-left h-auto p-3" onClick={() => handleSendMessage(q)}>
+                          <span className="text-sm font-normal">{q}</span>
+                        </Button>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Assessment Results Preview */}
-                <Card>
+                <Card className="lg:col-span-3">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Brain className="h-5 w-5" />
-                      Hasil Analisis AI
-                    </CardTitle>
-                    <CardDescription>
-                      Contoh hasil analisis yang akan ditampilkan
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {/* Grade */}
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Grade Kualitas:</span>
-                        <Badge className={getGradeColor("A")}>Grade A</Badge>
-                      </div>
-                      
-                      {/* Score */}
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Skor Kualitas:</span>
-                        <span className="text-2xl font-bold text-green-600">92/100</span>
-                      </div>
-                      
-                      {/* Confidence */}
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Tingkat Kepercayaan:</span>
-                        <span className="text-sm text-green-600">95%</span>
-                      </div>
-                      
-                      {/* Characteristics */}
-                      <div>
-                        <p className="text-sm font-medium mb-2">Karakteristik Terdeteksi:</p>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline">Tekstur Halus</Badge>
-                          <Badge variant="outline">Warna Konsisten</Badge>
-                          <Badge variant="outline">Kadar Air Optimal</Badge>
-                          <Badge variant="outline">Tidak Ada Kontaminasi</Badge>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="border-2 border-primary/50"><AvatarImage src="/sikupi-logo-removebg.png" /><AvatarFallback>SB</AvatarFallback></Avatar>
+                        <div>
+                          <CardTitle>SikupiBot</CardTitle>
+                          <CardDescription className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-500"></span>Online</CardDescription>
                         </div>
                       </div>
-                      
-                      {/* Recommendations */}
-                      <div>
-                        <p className="text-sm font-medium mb-2">Rekomendasi:</p>
-                        <ul className="text-sm text-muted-foreground space-y-1">
-                          <li>• Cocok untuk pupuk organik premium</li>
-                          <li>• Dapat digunakan untuk media tanam</li>
-                          <li>• Potensi harga jual tinggi</li>
-                        </ul>
-                      </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[50vh] overflow-y-auto space-y-4 p-4 bg-gray-100 dark:bg-gray-900 rounded-lg">
+                      {messages.map((message) => (
+                        <div key={message.id} className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          {message.type === 'bot' && <Avatar className="h-8 w-8"><AvatarImage src="/sikupi-logo-removebg.png" /><AvatarFallback>SB</AvatarFallback></Avatar>}
+                          <div className={`max-w-md p-3 rounded-lg shadow-sm ${message.type === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background'}`}>
+                            <p className="text-sm">{message.content}</p>
+                            <p className="text-xs opacity-70 mt-2 text-right">{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                          </div>
+                          {message.type === 'user' && <Avatar className="h-8 w-8"><AvatarFallback><User/></AvatarFallback></Avatar>}
+                        </div>
+                      ))}
+                      {isTyping && (
+                        <div className="flex gap-3 items-center">
+                           <Avatar className="h-8 w-8"><AvatarImage src="/sikupi-logo-removebg.png" /><AvatarFallback>SB</AvatarFallback></Avatar>
+                           <div className="p-3 bg-background rounded-lg shadow-sm text-sm text-muted-foreground">
+                              SikupiBot sedang mengetik...
+                           </div>
+                        </div>
+                      )}
+                      <div ref={messagesEndRef} />
                     </div>
                   </CardContent>
+                  <div className="p-4 border-t">
+                    <div className="relative">
+                      <Input
+                        placeholder="Ketik pertanyaan Anda di sini..."
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        className="pr-24"
+                      />
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        <Button variant="ghost" size="icon" disabled><Mic className="h-4 w-4"/></Button>
+                        <Button onClick={() => handleSendMessage(inputValue)}><Send className="h-4 w-4"/></Button>
+                      </div>
+                    </div>
+                  </div>
                 </Card>
               </div>
             </TabsContent>
 
             {/* History Tab */}
-            <TabsContent value="history" className="space-y-6">
+            <TabsContent value="history" className="mt-6">
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
-                    Riwayat Assessment
-                  </CardTitle>
-                  <CardDescription>
-                    Contoh riwayat analisis AI yang telah dilakukan
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {mockAssessmentData.map((item) => (
-                      <div key={item.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                        <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                          <Camera className="h-6 w-6 text-gray-400" />
+                <CardHeader><CardTitle>Riwayat Percakapan</CardTitle><CardDescription>Lihat kembali percakapan Anda sebelumnya. Fitur ini akan tersedia saat peluncuran penuh.</CardDescription></CardHeader>
+                <CardContent className="space-y-3">
+                  {chatHistory.map(item => (
+                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border bg-background hover:bg-gray-50 dark:hover:bg-gray-900">
+                      <div className="flex items-center gap-3">
+                        <MessageSquare className="h-5 w-5 text-muted-foreground"/>
+                        <div>
+                          <p className="font-semibold">{item.title}</p>
+                          <p className="text-sm text-muted-foreground">{item.date} • {item.messageCount} pesan</p>
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge className={getGradeColor(item.grade)}>
-                              Grade {item.grade}
-                            </Badge>
-                            <span className="text-sm text-muted-foreground">
-                              Skor: {item.score}/100
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-1 mb-2">
-                            {item.characteristics.map((char, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
-                                {char}
-                              </Badge>
-                            ))}
-                          </div>
-                          <p className="text-xs text-muted-foreground">{item.date}</p>
-                        </div>
-                        <Button variant="outline" size="sm" disabled>
-                          <FileText className="h-4 w-4 mr-2" />
-                          Detail
-                        </Button>
                       </div>
-                    ))}
-                  </div>
+                      <Button variant="outline" disabled>Lihat</Button>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
             </TabsContent>
 
             {/* Analytics Tab */}
-            <TabsContent value="analytics" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium">Total Assessment</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">156</div>
-                    <p className="text-xs text-muted-foreground">
-                      <TrendingUp className="inline h-3 w-3 mr-1" />
-                      +12% dari bulan lalu
-                    </p>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium">Rata-rata Skor</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">78.5</div>
-                    <p className="text-xs text-muted-foreground">
-                      <TrendingUp className="inline h-3 w-3 mr-1" />
-                      +5.2 dari bulan lalu
-                    </p>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium">Grade A</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">23%</div>
-                    <p className="text-xs text-muted-foreground">
-                      <TrendingUp className="inline h-3 w-3 mr-1" />
-                      +8% dari bulan lalu
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
+            <TabsContent value="analytics" className="mt-6">
+               <Card>
+                <CardHeader><CardTitle>Analitik Performa Chatbot</CardTitle><CardDescription>Data berikut adalah contoh untuk tujuan demonstrasi.</CardDescription></CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {chatStats.map(stat => (
+                      <Card key={stat.label}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">{stat.label}</CardTitle>
+                          <span className="text-muted-foreground">{stat.icon}</span>
+                        </CardHeader>
+                        <CardContent><div className="text-2xl font-bold">{stat.value}</div></CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+               </Card>
             </TabsContent>
 
             {/* Settings Tab */}
-            <TabsContent value="settings" className="space-y-6">
+            <TabsContent value="settings" className="mt-6">
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="h-5 w-5" />
-                    Pengaturan AI Assessment
-                  </CardTitle>
-                  <CardDescription>
-                    Konfigurasi pengaturan analisis AI
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Auto-Assessment</p>
-                        <p className="text-sm text-muted-foreground">
-                          Otomatis analisis setelah upload
-                        </p>
-                      </div>
-                      <Button variant="outline" size="sm" disabled>
-                        Aktifkan
-                      </Button>
+                <CardHeader><CardTitle>Pengaturan Chatbot</CardTitle><CardDescription>Atur preferensi chatbot Anda. Opsi ini akan dapat diubah pada versi final.</CardDescription></CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <Label htmlFor="voice-response">Respons Suara</Label>
+                      <p className="text-sm text-muted-foreground">Aktifkan untuk mendengar respons dari bot.</p>
                     </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Notifikasi Hasil</p>
-                        <p className="text-sm text-muted-foreground">
-                          Terima notifikasi setelah analisis selesai
-                        </p>
-                      </div>
-                      <Button variant="outline" size="sm" disabled>
-                        Aktifkan
-                      </Button>
+                    <Switch id="voice-response" disabled />
+                  </div>
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <Label htmlFor="language">Bahasa</Label>
+                      <p className="text-sm text-muted-foreground">Pilih bahasa yang digunakan oleh bot.</p>
                     </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Simpan Histori</p>
-                        <p className="text-sm text-muted-foreground">
-                          Simpan riwayat analisis untuk referensi
-                        </p>
-                      </div>
-                      <Button variant="outline" size="sm" disabled>
-                        Aktifkan
-                      </Button>
+                    <Select defaultValue="id" disabled>
+                      <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="id">Bahasa Indonesia</SelectItem></SelectContent>
+                    </Select>
+                  </div>
+                   <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <Label htmlFor="api-key">Koneksi API</Label>
+                      <p className="text-sm text-muted-foreground">Gunakan API key Anda untuk fitur lanjutan.</p>
                     </div>
+                    <Input id="api-key" placeholder="Belum tersedia" className="w-[180px]" disabled />
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
           </Tabs>
-
-          {/* Features Section */}
-          <div className="mt-12">
-            <h2 className="text-2xl font-bold text-center mb-8">Fitur AI Assessment</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {features.map((feature, index) => (
-                <Card key={index} className="text-center">
-                  <CardContent className="pt-6">
-                    <div className="flex justify-center mb-4">
-                      {feature.icon}
-                    </div>
-                    <h3 className="font-semibold mb-2">{feature.title}</h3>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {feature.description}
-                    </p>
-                    <Badge variant="outline" className="text-xs">
-                      {feature.status}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
         </Container>
       </div>
     </MainLayout>
