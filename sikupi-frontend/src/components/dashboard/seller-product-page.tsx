@@ -6,7 +6,6 @@ import { EnhancedProductFilter } from "@/components/products/enhanced-product-fi
 import { ProductSort } from "@/components/products/product-sort";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { 
@@ -19,21 +18,14 @@ import { useProducts, useProductCategories } from "@/lib/hooks/use-products";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ProductFilters } from "@/lib/types/product";
 
-// Helper function to validate sortBy parameter
 const getValidSortBy = (value: string | null): ProductFilters['sortBy'] => {
   const validSortOptions: Array<NonNullable<ProductFilters['sortBy']>> = [
-    "newest", 
-    "oldest", 
-    "price_low", 
-    "price_high", 
-    "rating", 
-    "popular"
+    "newest", "oldest", "price_low", "price_high", "rating", "popular"
   ];
-  
   if (value && validSortOptions.includes(value as any)) {
     return value as NonNullable<ProductFilters['sortBy']>;
   }
-  return "newest"; // default fallback
+  return "newest";
 };
 
 export function SellerProductPage() {
@@ -68,7 +60,6 @@ export function SellerProductPage() {
         params.set(key, value.toString());
       }
     });
-    // Mengarahkan ke URL yang benar untuk halaman ini
     router.push(`/dashboard/produk?${params.toString()}`);
   };
 
@@ -161,10 +152,12 @@ export function SellerProductPage() {
               </div>
             </div>
 
+            {/* DIUBAH: Menambahkan variant="seller" */}
             <ProductList
               products={products}
               isLoading={isLoading}
               error={error}
+              variant="seller" 
               className={viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"}
             />
 

@@ -1,4 +1,4 @@
-// FILE: src/components/products/product-list.tsx (Updated untuk safety)
+// FILE: src/components/products/product-list.tsx
 "use client";
 
 import { ProductCard } from "./product-card";
@@ -8,13 +8,20 @@ import { Package } from "lucide-react";
 import type { Product } from "@/lib/types/product";
 
 interface ProductListProps {
-  products?: Product[]; // Made optional for safety
+  products?: Product[];
   isLoading?: boolean;
   error?: Error | null;
+  variant?: 'buyer' | 'seller'; // DITAMBAHKAN: Prop untuk varian
   className?: string;
 }
 
-export function ProductList({ products = [], isLoading, error, className }: ProductListProps) {
+export function ProductList({ 
+  products = [], 
+  isLoading, 
+  error, 
+  variant = 'buyer', // Default ke 'buyer'
+  className 
+}: ProductListProps) {
   if (isLoading) {
     return (
       <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 ${className}`}>
@@ -43,7 +50,6 @@ export function ProductList({ products = [], isLoading, error, className }: Prod
     );
   }
 
-  // Safety check for products array
   if (!products || products.length === 0) {
     return (
       <div className="text-center py-12">
@@ -61,7 +67,8 @@ export function ProductList({ products = [], isLoading, error, className }: Prod
   return (
     <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 ${className}`}>
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} />
+        // DIUBAH: Mengoper prop variant ke ProductCard
+        <ProductCard key={product.id} product={product} variant={variant} />
       ))}
     </div>
   );
