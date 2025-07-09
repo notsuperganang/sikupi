@@ -1,43 +1,59 @@
+// FILE: src/components/products/product-list-page.tsx (Fixed)
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Search, Filter, Grid, List, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Container } from "@/components/common/container";
 import { ProductList } from "./product-list";
-import { ProductFilter } from "./product-filter";
+import { EnhancedProductFilter } from "./enhanced-product-filter";
 import { ProductSort } from "./product-sort";
-import { useProductStore } from "@/stores/product-store";
+import { useProducts, useProductCategories } from "@/lib/hooks/use-products";
+import type { ProductFilters } from "@/lib/types/product";
+
+// Helper function to validate sortBy parameter
+const getValidSortBy = (value: string): ProductFilters['sortBy'] => {
+  const validSortOptions: Array<NonNullable<ProductFilters['sortBy']>> = [
+    "newest", 
+    "oldest", 
+    "price_low", 
+    "price_high", 
+    "rating", 
+    "popular"
+  ];
+  
+  if (validSortOptions.includes(value as any)) {
+    return value as NonNullable<ProductFilters['sortBy']>;
+  }
+  return "newest"; // default fallback
+};
 
 export function ProductListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
-  
-  const { 
-    searchQuery: storeSearchQuery,
-    filters,
-    sort,
-    setSearchQuery: setStoreSearchQuery,
-    searchProducts,
-    fetchProducts,
-  } = useProductStore();
+  const [filters, setFilters] = useState<ProductFilters>({
+    page: 1,
+    limit: 12,
+    sortBy: "newest",
+  });
 
-  // Update local search query when store changes
-  useEffect(() => {
-    setSearchQuery(storeSearchQuery);
-  }, [storeSearchQuery]);
+  // Get products data using the hook
+  const { data: productsData, isLoading, error } = useProducts(filters);
+  const { data: categoriesData } = useProductCategories();
+
+  const products = productsData?.products || [];
+  const pagination = productsData?.pagination;
+  const categories = categoriesData?.wasteTypes || [];
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      setStoreSearchQuery(searchQuery);
-      searchProducts(searchQuery);
+      setFilters(prev => ({ ...prev, search: searchQuery, page: 1 }));
     } else {
-      setStoreSearchQuery("");
-      fetchProducts(1, filters, sort);
+      setFilters(prev => ({ ...prev, search: undefined, page: 1 }));
     }
   };
 
@@ -45,11 +61,20 @@ export function ProductListPage() {
     const value = e.target.value;
     setSearchQuery(value);
     
-    // If search is cleared, fetch all products
+    // If search is cleared, remove search filter
     if (!value.trim()) {
-      setStoreSearchQuery("");
-      fetchProducts(1, filters, sort);
+      setFilters(prev => ({ ...prev, search: undefined, page: 1 }));
     }
+  };
+
+  const handleFilterChange = (newFilters: Partial<ProductFilters>) => {
+    setFilters(prev => ({ ...prev, ...newFilters, page: 1 }));
+  };
+
+  // Fixed handler dengan validasi
+  const handleSortChange = (sortBy: string) => {
+    const validSortBy = getValidSortBy(sortBy);
+    setFilters(prev => ({ ...prev, sortBy: validSortBy, page: 1 }));
   };
 
   return (
@@ -99,7 +124,14 @@ export function ProductListPage() {
                   <SheetTitle>Filter Produk</SheetTitle>
                 </SheetHeader>
                 <div className="mt-6">
-                  <ProductFilter onFilterChange={() => setShowFilters(false)} />
+                  <EnhancedProductFilter
+                    filters={filters}
+                    categories={categories}
+                    onFilterChange={(newFilters) => {
+                      handleFilterChange(newFilters);
+                      setShowFilters(false);
+                    }}
+                  />
                 </div>
               </SheetContent>
             </Sheet>
@@ -114,11 +146,23 @@ export function ProductListPage() {
               <Filter className="h-4 w-4 mr-2" />
               {showFilters ? "Sembunyikan Filter" : "Tampilkan Filter"}
             </Button>
+
+            {/* Results Count */}
+            <div className="text-sm text-muted-foreground">
+              {!isLoading && (
+                <span>
+                  {pagination?.totalItems || 0} produk ditemukan
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-4">
             {/* Sort */}
-            <ProductSort />
+            <ProductSort
+              sortBy={filters.sortBy}
+              onSortChange={handleSortChange}
+            />
 
             {/* View Mode Toggle */}
             <div className="flex items-center border rounded-lg p-1">
@@ -149,7 +193,11 @@ export function ProductListPage() {
               <div className="sticky top-24">
                 <div className="bg-card p-6 rounded-lg border">
                   <h3 className="font-semibold mb-4">Filter Produk</h3>
-                  <ProductFilter />
+                  <EnhancedProductFilter
+                    filters={filters}
+                    categories={categories}
+                    onFilterChange={handleFilterChange}
+                  />
                 </div>
               </div>
             </div>
@@ -158,9 +206,40 @@ export function ProductListPage() {
           {/* Product List */}
           <div className="flex-1">
             <ProductList
-              variant={viewMode === "list" ? "compact" : "default"}
-              showHeader={false}
+              products={products}
+              isLoading={isLoading}
+              error={error}
+              className={viewMode === "list" ? "grid-cols-1 md:grid-cols-2" : ""}
             />
+
+            {/* Pagination */}
+            {pagination && pagination.totalPages > 1 && (
+              <div className="flex justify-center mt-8">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleFilterChange({ page: pagination.currentPage - 1 })}
+                    disabled={!pagination.hasPreviousPage || isLoading}
+                  >
+                    Sebelumnya
+                  </Button>
+                  
+                  <span className="text-sm text-muted-foreground px-4">
+                    Halaman {pagination.currentPage} dari {pagination.totalPages}
+                  </span>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleFilterChange({ page: pagination.currentPage + 1 })}
+                    disabled={!pagination.hasNextPage || isLoading}
+                  >
+                    Selanjutnya
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </Container>

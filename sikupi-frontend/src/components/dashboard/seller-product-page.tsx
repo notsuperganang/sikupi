@@ -1,44 +1,18 @@
-// FILE PATH: /src/components/dashboard/seller-products-page.tsx
-
 "use client";
 
-import { useState, useEffect } from "react";
-import Image from "next/image";
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Edit, 
-  Trash2, 
-  Eye,
-  MoreHorizontal,
-  Upload,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  X,
-  Package
-} from "lucide-react";
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import {
+import { 
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -49,182 +23,285 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { DashboardHeader } from "@/components/dashboard/dashboard-header";
-import { LoadingSkeleton } from "@/components/common/loading-skeleton";
-import { useSellerProducts } from "@/lib/hooks/use-products";
-import { useProductStore, type Product } from "@/stores/product-store";
-import { formatCurrency, formatWeight, formatDate } from "@/lib/utils";
-import { PRODUCT_CATEGORIES, COFFEE_GRADES } from "@/lib/constants";
-import { toast } from "sonner";
-
+import { 
+  Search, 
+  Plus, 
+  MoreHorizontal, 
+  Edit, 
+  Trash2, 
+  Eye, 
+  Package,
+  Filter,
+  SortAsc,
+  SortDesc
+} from "lucide-react";
 import { useMyProducts } from "@/lib/hooks/use-products";
-import { ProductForm } from "@/components/products/product-form";
+import { toast } from "sonner";
+import Link from "next/link";
+import Image from "next/image";
 
-export function SellerProductsPage() {
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "active":
+      return "bg-green-100 text-green-800";
+    case "inactive":
+      return "bg-gray-100 text-gray-800";
+    case "sold_out":
+      return "bg-red-100 text-red-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+};
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case "active":
+      return "Aktif";
+    case "inactive":
+      return "Tidak Aktif";
+    case "sold_out":
+      return "Habis";
+    default:
+      return status;
+  }
+};
+
+function ProductCard({ product }: { product: any }) {
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const handleEdit = () => {
+    toast.success("Fitur sedang dalam pengembangan", {
+      description: "Edit produk akan segera tersedia.",
+    });
+  };
+
+  const handleDelete = () => {
+    toast.success("Fitur sedang dalam pengembangan", {
+      description: "Hapus produk akan segera tersedia.",
+    });
+  };
+
+  const handleViewStats = () => {
+    toast.success("Fitur sedang dalam pengembangan", {
+      description: "Statistik produk akan segera tersedia.",
+    });
+  };
+
+  return (
+    <Card className="group hover:shadow-lg transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+              {product.images && product.images.length > 0 ? (
+                <Image
+                  src={product.images[0]}
+                  alt={product.title}
+                  width={48}
+                  height={48}
+                  className="object-cover"
+                />
+              ) : (
+                <Package className="w-6 h-6 text-muted-foreground" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-lg line-clamp-1">{product.title}</h3>
+              <p className="text-sm text-muted-foreground line-clamp-2">
+                {product.description}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Badge className={getStatusColor(product.status)}>
+              {getStatusLabel(product.status)}
+            </Badge>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleViewStats}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Lihat Statistik
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleEdit}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Produk
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={handleDelete}
+                  className="text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Hapus Produk
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <div>
+            <p className="text-sm font-medium">Harga/kg</p>
+            <p className="text-lg font-bold text-primary">
+              {formatCurrency(product.pricePerKg)}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium">Stok</p>
+            <p className="text-lg font-semibold">{product.quantityKg} kg</p>
+          </div>
+          <div>
+            <p className="text-sm font-medium">Grade</p>
+            <p className="text-lg font-semibold">Grade {product.grade}</p>
+          </div>
+          <div>
+            <p className="text-sm font-medium">Dilihat</p>
+            <p className="text-lg font-semibold">{product.viewsCount}x</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>{product.location}</span>
+          <span>Dibuat: {new Date(product.createdAt).toLocaleDateString('id-ID')}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function SellerProductPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTab, setSelectedTab] = useState("all");
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [sortBy, setSortBy] = useState("newest");
+  const [statusFilter, setStatusFilter] = useState("all");
   
-  const { 
-    data: productsData, 
-    isLoading, 
-    error,
-    refetch 
-  } = useMyProducts();
-  
-  const { removeProduct } = useProductStore();
+  const { data, isLoading, error } = useMyProducts({
+    search: searchQuery,
+    sortBy: sortBy as any,
+    status: statusFilter === "all" ? undefined : statusFilter,
+  });
 
-  const products = productsData?.products || [];
+  const products = data?.products || [];
 
-  // Filter products based on tab and search
+  const handleCreateProduct = () => {
+    toast.success("Fitur sedang dalam pengembangan", {
+      description: "Tambah produk akan segera tersedia.",
+    });
+  };
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          product.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesTab = selectedTab === "all" || 
-                      (selectedTab === "active" && product.status === "active") ||
-                      (selectedTab === "inactive" && product.status === "inactive") ||
-                      (selectedTab === "out_of_stock" && !product.isAvailable);
-    
-    return matchesSearch && matchesTab;
+    const matchesStatus = statusFilter === "all" || product.status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
-  const handleDeleteProduct = async (productId: string) => {
-    try {
-      await removeProduct(productId);
-      toast.success("Produk berhasil dihapus!");
-      refetch();
-    } catch (error) {
-      toast.error("Gagal menghapus produk");
-    }
+  const handleExport = () => {
+    toast.success("Fitur sedang dalam pengembangan", {
+      description: "Export data akan segera tersedia.",
+    });
   };
 
-  const getStatusBadge = (product: Product) => {
-    if (!product.isAvailable) {
-      return <Badge variant="destructive">Stok Habis</Badge>;
-    }
-    if (product.status === "inactive") {
-      return <Badge variant="secondary">Tidak Aktif</Badge>;
-    }
-    return <Badge variant="default">Aktif</Badge>;
-  };
-
-  const stats = {
-    total: products.length,
-    active: products.filter(p => p.status === "active" && p.isAvailable).length,
-    inactive: products.filter(p => p.status === "inactive").length,
-    outOfStock: products.filter(p => !p.isAvailable).length,
+  const handleBulkAction = () => {
+    toast.success("Fitur sedang dalam pengembangan", {
+      description: "Bulk actions akan segera tersedia.",
+    });
   };
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <DashboardHeader
-          title="Kelola Produk"
-          description="Kelola semua produk ampas kopi Anda"
-        />
-        <LoadingSkeleton variant="table" />
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Produk Saya</h1>
+            <p className="text-muted-foreground">Kelola semua produk yang Anda jual</p>
+          </div>
+          <Button disabled>
+            <Plus className="h-4 w-4 mr-2" />
+            Tambah Produk
+          </Button>
+        </div>
+        
+        <div className="grid gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-6">
+                <div className="h-20 bg-muted rounded"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Produk Saya</h1>
+            <p className="text-muted-foreground">Kelola semua produk yang Anda jual</p>
+          </div>
+          <Button onClick={handleCreateProduct}>
+            <Plus className="h-4 w-4 mr-2" />
+            Tambah Produk
+          </Button>
+        </div>
+        
+        <Card>
+          <CardContent className="p-6 text-center">
+            <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Terjadi Kesalahan</h3>
+            <p className="text-muted-foreground">
+              Gagal memuat produk. Silakan coba lagi nanti.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <DashboardHeader
-        title="Kelola Produk"
-        description="Kelola semua produk ampas kopi Anda"
-        action={
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Tambah Produk
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Tambah Produk Baru</DialogTitle>
-                <DialogDescription>
-                  Lengkapi informasi produk ampas kopi Anda
-                </DialogDescription>
-              </DialogHeader>
-              <ProductForm
-                onSuccess={() => {
-                  setIsCreateDialogOpen(false);
-                  refetch();
-                }}
-              />
-            </DialogContent>
-          </Dialog>
-        }
-      />
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Produk</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
-              </div>
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Package className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Produk Aktif</p>
-                <p className="text-2xl font-bold text-green-600">{stats.active}</p>
-              </div>
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Tidak Aktif</p>
-                <p className="text-2xl font-bold text-gray-600">{stats.inactive}</p>
-              </div>
-              <div className="p-2 bg-gray-100 rounded-lg">
-                <Clock className="w-6 h-6 text-gray-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Stok Habis</p>
-                <p className="text-2xl font-bold text-red-600">{stats.outOfStock}</p>
-              </div>
-              <div className="p-2 bg-red-100 rounded-lg">
-                <AlertCircle className="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Produk Saya</h1>
+          <p className="text-muted-foreground">
+            Kelola semua produk yang Anda jual ({products.length} produk)
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" onClick={handleExport}>
+            Export Data
+          </Button>
+          <Button onClick={handleCreateProduct}>
+            <Plus className="h-4 w-4 mr-2" />
+            Tambah Produk
+          </Button>
+        </div>
       </div>
 
-      {/* Filters and Search */}
+      {/* Search and Filters */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
+        <CardHeader>
+          <CardTitle>Filter & Pencarian</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
                 placeholder="Cari produk..."
                 value={searchQuery}
@@ -232,211 +309,107 @@ export function SellerProductsPage() {
                 className="pl-10"
               />
             </div>
-            <Button variant="outline">
-              <Filter className="w-4 h-4 mr-2" />
-              Filter
-            </Button>
+            <div className="flex items-center space-x-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Filter className="h-4 w-4 mr-2" />
+                    Status: {statusFilter === "all" ? "Semua" : getStatusLabel(statusFilter)}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => setStatusFilter("all")}>
+                    Semua Status
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter("active")}>
+                    Aktif
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter("inactive")}>
+                    Tidak Aktif
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter("sold_out")}>
+                    Habis
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    {sortBy === "newest" ? <SortDesc className="h-4 w-4 mr-2" /> : <SortAsc className="h-4 w-4 mr-2" />}
+                    Urutkan
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => setSortBy("newest")}>
+                    Terbaru
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy("oldest")}>
+                    Terlama
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy("price_high")}>
+                    Harga Tertinggi
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy("price_low")}>
+                    Harga Terendah
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Product Tabs */}
-      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-        <TabsList>
-          <TabsTrigger value="all">Semua ({stats.total})</TabsTrigger>
-          <TabsTrigger value="active">Aktif ({stats.active})</TabsTrigger>
-          <TabsTrigger value="inactive">Tidak Aktif ({stats.inactive})</TabsTrigger>
-          <TabsTrigger value="out_of_stock">Stok Habis ({stats.outOfStock})</TabsTrigger>
-        </TabsList>
+      {/* Products Grid */}
+      {filteredProducts.length === 0 ? (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">
+              {searchQuery ? "Tidak Ada Hasil" : "Belum Ada Produk"}
+            </h3>
+            <p className="text-muted-foreground mb-6">
+              {searchQuery 
+                ? "Coba gunakan kata kunci yang berbeda" 
+                : "Mulai jual produk ampas kopi Anda sekarang"
+              }
+            </p>
+            {!searchQuery && (
+              <Button onClick={handleCreateProduct}>
+                <Plus className="h-4 w-4 mr-2" />
+                Tambah Produk Pertama
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {filteredProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      )}
 
-        <TabsContent value={selectedTab} className="mt-6">
-          {error ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-500" />
-                <h3 className="text-lg font-semibold mb-2">Gagal Memuat Produk</h3>
-                <p className="text-muted-foreground mb-4">
-                  Terjadi kesalahan saat memuat data produk.
-                </p>
-                <Button onClick={() => refetch()}>Coba Lagi</Button>
-              </CardContent>
-            </Card>
-          ) : filteredProducts.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <div className="text-6xl mb-4">📦</div>
-                <h3 className="text-lg font-semibold mb-2">Belum Ada Produk</h3>
-                <p className="text-muted-foreground mb-4">
-                  {products.length === 0 
-                    ? "Mulai jual ampas kopi Anda dengan menambah produk pertama."
-                    : "Tidak ada produk yang sesuai dengan filter pencarian."
-                  }
-                </p>
-                {products.length === 0 && (
-                  <Button onClick={() => setIsCreateDialogOpen(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Tambah Produk Pertama
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onEdit={() => setEditingProduct(product)}
-                  onDelete={() => handleDeleteProduct(product.id)}
-                />
-              ))}
+      {/* Bulk Actions */}
+      {filteredProducts.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Menampilkan {filteredProducts.length} dari {products.length} produk
+              </p>
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" size="sm" onClick={handleBulkAction}>
+                  Pilih Semua
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleBulkAction}>
+                  Hapus Terpilih
+                </Button>
+              </div>
             </div>
-          )}
-        </TabsContent>
-      </Tabs>
-
-      {/* Edit Product Dialog */}
-      <Dialog 
-        open={!!editingProduct} 
-        onOpenChange={(open) => !open && setEditingProduct(null)}
-      >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Produk</DialogTitle>
-            <DialogDescription>
-              Update informasi produk Anda
-            </DialogDescription>
-          </DialogHeader>
-          {editingProduct && (
-            <ProductForm
-              product={editingProduct}
-              onSuccess={() => {
-                setEditingProduct(null);
-                refetch();
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
-
-// Product Card Component
-interface ProductCardProps {
-  product: Product;
-  onEdit: () => void;
-  onDelete: () => void;
-}
-
-function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
-  const categoryInfo = PRODUCT_CATEGORIES.find(c => c.value === product.category);
-  const gradeInfo = COFFEE_GRADES.find(g => g.value === product.grade);
-
-  return (
-    <Card className="group hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="relative mb-4">
-          <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
-            <Image
-              src={product.images[0] || "/placeholder-product.png"}
-              alt={product.title}
-              width={300}
-              height={300}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          
-          <div className="absolute top-2 right-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="icon" className="h-8 w-8">
-                  <MoreHorizontal className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onEdit}>
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href={`/produk/${product.id}`} target="_blank">
-                    <Eye className="w-4 h-4 mr-2" />
-                    Lihat Detail
-                  </a>
-                </DropdownMenuItem>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <DropdownMenuItem 
-                      className="text-red-600 focus:text-red-600"
-                      onSelect={(e) => e.preventDefault()}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Hapus
-                    </DropdownMenuItem>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Hapus Produk</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Apakah Anda yakin ingin menghapus produk "{product.title}"? 
-                        Tindakan ini tidak dapat dibatalkan.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Batal</AlertDialogCancel>
-                      <AlertDialogAction onClick={onDelete} className="bg-red-600 hover:bg-red-700">
-                        Hapus
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          <div className="absolute bottom-2 left-2">
-            {getStatusBadge(product)}
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <h3 className="font-semibold line-clamp-2 group-hover:text-primary transition-colors">
-            {product.title}
-          </h3>
-          
-          <div className="flex gap-2">
-            {categoryInfo && (
-              <Badge variant="outline" className="text-xs">
-                {categoryInfo.icon} {categoryInfo.label}
-              </Badge>
-            )}
-            {gradeInfo && (
-              <Badge variant="secondary" className="text-xs">
-                {gradeInfo.label}
-              </Badge>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-lg font-bold text-primary">
-                {formatCurrency(product.pricePerKg)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                per kg • {formatWeight(product.quantityKg)} tersedia
-              </p>
-            </div>
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            Diposting: {formatDate(product.createdAt)}
-          </p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// Import ProductForm
-import { ProductForm } from "@/components/products/product-form";

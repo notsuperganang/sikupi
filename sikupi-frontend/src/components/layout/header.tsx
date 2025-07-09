@@ -1,107 +1,127 @@
-// FILE PATH: /sikupi-frontend/src/components/layout/header.tsx
+// FILE: src/components/layout/header.tsx
 
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Search, ShoppingCart, Menu, X, User, LogIn, UserPlus, LogOut } from "lucide-react";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
+import { 
+  ShoppingCart, 
+  Search, 
+  Menu, 
+  X, 
+  LogOut,
+  LogIn,
+  UserPlus,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Container } from "@/components/common/container";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Container } from "@/components/common/container"; // Asumsi Anda punya komponen ini
 import { CartDrawer } from "@/components/cart/cart-drawer";
-import { NAV_LINKS, USER_MENU_ITEMS, APP_CONFIG } from "@/lib/constants";
-import { useCartStore } from "@/stores/cart-store";
+
 import { useAuthStore } from "@/stores/auth-store";
+import { useCartCount } from "@/lib/hooks/use-cart";
+import { useLogout } from "@/lib/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { APP_CONFIG, NAV_LINKS, SELLER_MENU_ITEMS, BUYER_MENU_ITEMS } from "@/lib/constants";
 
 export function Header() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
   const pathname = usePathname();
   
-  // Use real auth state
-  const { user, isAuthenticated, logout } = useAuthStore();
-  const { summary } = useCartStore();
-  const cartItemCount = summary.totalItems;
+  const { user, isAuthenticated } = useAuthStore();
+  const { data: cartCount } = useCartCount();
+  const logoutMutation = useLogout();
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Logout error:', error);
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/produk?search=${encodeURIComponent(searchQuery.trim())}`);
+      if (isMobileMenuOpen) setIsMobileMenuOpen(false);
     }
   };
 
-  const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
-    <div className={cn(
-      "flex gap-6",
-      mobile && "flex-col space-y-4"
-    )}>
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
+
+  const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => (
+    <nav className={cn("flex items-center", isMobile ? "flex-col space-y-4" : "space-x-6")}>
       {NAV_LINKS.map((link) => (
         <Link
           key={link.href}
           href={link.href}
           className={cn(
             "text-sm font-medium transition-colors hover:text-primary",
-            pathname === link.href 
-              ? "text-primary" 
-              : "text-muted-foreground",
-            mobile && "text-base"
+            pathname === link.href ? "text-primary" : "text-muted-foreground",
+            isMobile && "text-lg"
           )}
-          onClick={() => mobile && setIsOpen(false)}
+          onClick={() => isMobile && setIsMobileMenuOpen(false)}
         >
           {link.label}
         </Link>
       ))}
-    </div>
+    </nav>
   );
+  
+  const userMenuItems = user?.userType === 'seller' ? SELLER_MENU_ITEMS : BUYER_MENU_ITEMS;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <Container>
-        <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <Image
-              src={APP_CONFIG.LOGO_PATH}
-              alt={APP_CONFIG.NAME}
-              width={40}
-              height={40}
-              className="w-10 h-10"
-            />
-            <span className="text-xl font-bold">{APP_CONFIG.NAME}</span>
-          </Link>
+        <div className="flex h-16 items-center justify-between gap-6">
+          <div className="flex items-center gap-6">
+            {/* Logo */}
+            <Link href="/" className="flex items-center space-x-2">
+              <Image
+                src={APP_CONFIG.LOGO_PATH}
+                alt={APP_CONFIG.NAME}
+                width={32}
+                height={32}
+              />
+              <span className="hidden sm:inline-block text-lg font-bold">{APP_CONFIG.NAME}</span>
+            </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex">
-            <NavLinks />
-          </nav>
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex">
+              <NavLinks />
+            </div>
+          </div>
 
-          {/* Desktop Actions */}
-          <div className="hidden md:flex items-center space-x-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          {/* Actions */}
+          <div className="flex items-center gap-2 md:gap-4">
+            {/* Desktop Search */}
+            <form onSubmit={handleSearch} className="hidden md:block relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Cari ampas kopi..."
-                className="pl-10 w-64"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 w-48 lg:w-64"
               />
-            </div>
+            </form>
 
             {/* Cart */}
             <CartDrawer>
               <Button variant="ghost" size="icon" className="relative">
-                <ShoppingCart className="w-5 h-5" />
-                {cartItemCount > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full flex items-center justify-center text-xs"
-                  >
-                    {cartItemCount}
+                <ShoppingCart className="h-5 w-5" />
+                {cartCount && cartCount.count > 0 && (
+                  <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 justify-center rounded-full p-0 text-xs">
+                    {cartCount.count}
                   </Badge>
                 )}
               </Button>
@@ -111,190 +131,101 @@ export function Header() {
             {isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2">
-                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                      {user.avatarUrl ? (
-                        <Image
-                          src={user.avatarUrl}
-                          alt={user.fullName}
-                          width={32}
-                          height={32}
-                          className="rounded-full"
-                        />
-                      ) : (
-                        <User className="w-4 h-4" />
-                      )}
-                    </div>
-                    <span className="text-sm font-medium">{user.fullName}</span>
+                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                     <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="font-semibold text-primary">
+                          {user.fullName.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  {USER_MENU_ITEMS.map((item) => (
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.fullName}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {userMenuItems.map((item) => (
                     <DropdownMenuItem key={item.href} asChild>
                       <Link href={item.href}>{item.label}</Link>
                     </DropdownMenuItem>
                   ))}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Keluar
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Keluar</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center space-x-2">
+              <div className="hidden md:flex items-center gap-2">
                 <Button variant="ghost" asChild>
-                  <Link href="/masuk">
-                    <LogIn className="w-4 h-4 mr-2" />
-                    Masuk
-                  </Link>
+                  <Link href="/masuk"><LogIn className="mr-2 h-4 w-4" /> Masuk</Link>
                 </Button>
                 <Button asChild>
-                  <Link href="/daftar">
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Daftar
-                  </Link>
+                  <Link href="/daftar"><UserPlus className="mr-2 h-4 w-4" /> Daftar</Link>
                 </Button>
               </div>
             )}
-          </div>
-
-          {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center space-x-2">
-            {/* Mobile Cart */}
-            <CartDrawer>
-              <Button variant="ghost" size="icon" className="relative">
-                <ShoppingCart className="w-5 h-5" />
-                {cartItemCount > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-2 -right-2 h-5 w-5 rounded-full flex items-center justify-center text-xs"
-                  >
-                    {cartItemCount}
-                  </Badge>
-                )}
-              </Button>
-            </CartDrawer>
-
+            
             {/* Mobile Menu Trigger */}
-            <Sheet open={isOpen} onOpenChange={setIsOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Menu className="w-5 h-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-80">
-                <div className="flex flex-col h-full">
-                  {/* Mobile Header */}
-                  <div className="flex items-center justify-between pb-6 border-b">
-                    <Link href="/" className="flex items-center space-x-2" onClick={() => setIsOpen(false)}>
-                      <Image
-                        src={APP_CONFIG.LOGO_PATH}
-                        alt={APP_CONFIG.NAME}
-                        width={32}
-                        height={32}
-                        className="w-8 h-8"
-                      />
-                      <span className="text-lg font-bold">{APP_CONFIG.NAME}</span>
-                    </Link>
-                    <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
-                      <X className="w-5 h-5" />
-                    </Button>
-                  </div>
-
-                  {/* Mobile Search */}
-                  <div className="py-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                      <Input
-                        placeholder="Cari ampas kopi..."
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Mobile User Info */}
-                  {isAuthenticated && user && (
-                    <div className="py-4 border-b">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                          {user.avatarUrl ? (
-                            <Image
-                              src={user.avatarUrl}
-                              alt={user.fullName}
-                              width={40}
-                              height={40}
-                              className="rounded-full"
-                            />
-                          ) : (
-                            <User className="w-5 h-5" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium">{user.fullName}</p>
-                          <p className="text-sm text-muted-foreground">{user.email}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Mobile Navigation */}
-                  <nav className="flex-1 py-6">
-                    <NavLinks mobile />
-                    
-                    {isAuthenticated && user && (
-                      <>
-                        <div className="my-6 border-t" />
-                        <div className="space-y-4">
-                          {USER_MENU_ITEMS.map((item) => (
-                            <Link
-                              key={item.href}
-                              href={item.href}
-                              className="block text-base font-medium transition-colors hover:text-primary"
-                              onClick={() => setIsOpen(false)}
-                            >
-                              {item.label}
-                            </Link>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </nav>
-
-                  {/* Mobile Actions */}
-                  <div className="pt-6 border-t">
-                    {isAuthenticated && user ? (
-                      <Button 
-                        variant="outline" 
-                        className="w-full" 
-                        onClick={() => {
-                          handleLogout();
-                          setIsOpen(false);
-                        }}
-                      >
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Keluar
+            <div className="md:hidden">
+              <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-full max-w-sm">
+                  <div className="flex flex-col h-full">
+                    <div className="flex items-center justify-between pb-6 border-b">
+                      <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center space-x-2">
+                         <Image src={APP_CONFIG.LOGO_PATH} alt={APP_CONFIG.NAME} width={32} height={32}/>
+                         <span className="text-lg font-bold">{APP_CONFIG.NAME}</span>
+                      </Link>
+                      <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
+                        <X className="h-5 w-5" />
                       </Button>
-                    ) : (
-                      <div className="space-y-2">
-                        <Button asChild className="w-full">
-                          <Link href="/daftar" onClick={() => setIsOpen(false)}>
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            Daftar
-                          </Link>
-                        </Button>
-                        <Button variant="outline" asChild className="w-full">
-                          <Link href="/masuk" onClick={() => setIsOpen(false)}>
-                            <LogIn className="w-4 h-4 mr-2" />
-                            Masuk
-                          </Link>
-                        </Button>
+                    </div>
+
+                    <form onSubmit={handleSearch} className="py-6">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Cari ampas kopi..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-10"
+                        />
                       </div>
-                    )}
+                    </form>
+                    
+                    <div className="flex-1 border-t pt-6">
+                      <NavLinks isMobile />
+                    </div>
+
+                    <div className="pt-6 border-t">
+                      {isAuthenticated ? (
+                         <Button variant="outline" className="w-full" onClick={handleLogout}>
+                           <LogOut className="mr-2 h-4 w-4" /> Keluar
+                         </Button>
+                      ) : (
+                        <div className="space-y-2">
+                          <Button className="w-full" asChild>
+                            <Link href="/masuk" onClick={() => setIsMobileMenuOpen(false)}>Masuk</Link>
+                          </Button>
+                          <Button variant="outline" className="w-full" asChild>
+                            <Link href="/daftar" onClick={() => setIsMobileMenuOpen(false)}>Daftar</Link>
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </SheetContent>
-            </Sheet>
+                </SheetContent>
+              </Sheet>
+            </div>
           </div>
         </div>
       </Container>

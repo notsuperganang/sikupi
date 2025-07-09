@@ -1,480 +1,281 @@
-// FILE PATH: /src/components/products/enhanced-product-filter.tsx
-
+// FILE: src/components/products/enhanced-product-filter.tsx
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { 
-  Search, 
-  Filter, 
-  X, 
-  ChevronDown, 
-  MapPin, 
-  DollarSign,
-  Star,
-  Calendar,
-  Package,
-  SlidersHorizontal
-} from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
 } from "@/components/ui/select";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { useProductStore, type ProductFilters, type ProductSort } from "@/stores/product-store";
-import { useDebouncedSearch } from "@/lib/hooks/use-products";
-import { PRODUCT_CATEGORIES, COFFEE_GRADES } from "@/lib/constants";
-import { formatCurrency } from "@/lib/utils";
+import { X, Filter } from "lucide-react";
+import type { ProductFilters } from "@/lib/types/product";
 
 interface EnhancedProductFilterProps {
-  onFilterChange?: (filters: ProductFilters) => void;
-  onSortChange?: (sort: ProductSort) => void;
-  defaultFilters?: ProductFilters;
-  defaultSort?: ProductSort;
-  showAdvanced?: boolean;
+  filters: ProductFilters;
+  categories: Array<{ type: string; count: number; label: string }>;
+  onFilterChange: (filters: Partial<ProductFilters>) => void;
   className?: string;
 }
 
-export function EnhancedProductFilter({
+export function EnhancedProductFilter({ 
+  filters, 
+  categories, 
   onFilterChange,
-  onSortChange,
-  defaultFilters = {},
-  defaultSort = { field: "newest", direction: "desc" },
-  showAdvanced = true,
-  className,
+  className 
 }: EnhancedProductFilterProps) {
-  const [searchQuery, setSearchQuery] = useState(defaultFilters.search || "");
-  const [filters, setFilters] = useState<ProductFilters>(defaultFilters);
-  const [sort, setSort] = useState<ProductSort>(defaultSort);
-  const [showFilters, setShowFilters] = useState(false);
-  const [priceRange, setPriceRange] = useState([
-    defaultFilters.priceMin || 0,
-    defaultFilters.priceMax || 1000000
-  ]);
+  const [localFilters, setLocalFilters] = useState(filters);
 
-  // Debounced search
-  const { data: searchResults, isLoading: isSearching } = useDebouncedSearch(
-    searchQuery,
-    { ...filters, search: undefined }, // Exclude search from other filters
-    300
-  );
-
-  // Search suggestions from recent searches and popular terms
-  const searchSuggestions = useMemo(() => {
-    const recent = JSON.parse(localStorage.getItem('recentSearches') || '[]').slice(0, 5);
-    const popular = ['ampas kopi grade A', 'pupuk organik', 'kompos kopi', 'kerajinan kopi'];
-    return [...new Set([...recent, ...popular])];
-  }, []);
-
-  // Update filters when props change
-  useEffect(() => {
-    setFilters(defaultFilters);
-    setSearchQuery(defaultFilters.search || "");
-    setPriceRange([
-      defaultFilters.priceMin || 0,
-      defaultFilters.priceMax || 1000000
-    ]);
-  }, [defaultFilters]);
-
-  // Debounced filter update
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const newFilters = {
-        ...filters,
-        search: searchQuery || undefined,
-        priceMin: priceRange[0] > 0 ? priceRange[0] : undefined,
-        priceMax: priceRange[1] < 1000000 ? priceRange[1] : undefined,
-      };
-      onFilterChange?.(newFilters);
-      
-      // Save search query to recent searches
-      if (searchQuery.trim()) {
-        const recent = JSON.parse(localStorage.getItem('recentSearches') || '[]');
-        const updated = [searchQuery, ...recent.filter((q: string) => q !== searchQuery)].slice(0, 10);
-        localStorage.setItem('recentSearches', JSON.stringify(updated));
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, filters, priceRange, onFilterChange]);
-
-  const handleFilterChange = (key: keyof ProductFilters, value: any) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value || undefined,
-    }));
+  const handleFilterUpdate = (key: string, value: any) => {
+    const newFilters = { ...localFilters, [key]: value };
+    setLocalFilters(newFilters);
+    onFilterChange({ [key]: value });
   };
 
-  const handleSortChange = (newSort: ProductSort) => {
-    setSort(newSort);
-    onSortChange?.(newSort);
+  const handlePriceChange = (values: number[]) => {
+    const [min, max] = values;
+    setLocalFilters(prev => ({ ...prev, minPrice: min, maxPrice: max }));
   };
 
-  const clearFilters = () => {
-    setSearchQuery("");
-    setFilters({});
-    setPriceRange([0, 1000000]);
-    setSort({ field: "newest", direction: "desc" });
+  const applyPriceFilter = () => {
+    onFilterChange({ 
+      minPrice: localFilters.minPrice, 
+      maxPrice: localFilters.maxPrice 
+    });
   };
 
-  const activeFilterCount = Object.values(filters).filter(Boolean).length + 
-    (searchQuery ? 1 : 0) + 
-    (priceRange[0] > 0 || priceRange[1] < 1000000 ? 1 : 0);
+  const clearAllFilters = () => {
+    const clearedFilters = {
+      search: "",
+      category: "",
+      wasteType: "",
+      minPrice: undefined,
+      maxPrice: undefined,
+      location: "",
+      grade: "",
+      organicCertified: false,
+      fairTradeCertified: false,
+    };
+    setLocalFilters(clearedFilters);
+    onFilterChange(clearedFilters);
+  };
+
+  const wasteTypes = [
+    { value: "coffee_grounds", label: "Ampas Kopi" },
+    { value: "coffee_pulp", label: "Pulp Kopi" },
+    { value: "coffee_husks", label: "Kulit Kopi" },
+    { value: "coffee_chaff", label: "Chaff Kopi" },
+  ];
+
+  const categoryOptions = [
+    { value: "pupuk", label: "Pupuk Organik" },
+    { value: "kompos", label: "Kompos" },
+    { value: "kerajinan", label: "Kerajinan" },
+    { value: "pakan", label: "Pakan Ternak" },
+  ];
+
+  const grades = [
+    { value: "A", label: "Grade A" },
+    { value: "B", label: "Grade B" },
+    { value: "C", label: "Grade C" },
+  ];
+
+  const provinces = [
+    "Aceh", "Sumatera Utara", "Sumatera Barat", "Riau", 
+    "Jambi", "Sumatera Selatan", "Bengkulu", "Lampung",
+    "Jawa Barat", "Jawa Tengah", "Jawa Timur", "DKI Jakarta",
+    "Sulawesi Selatan", "Sulawesi Utara", "Bali", "NTB"
+  ];
 
   return (
-    <div className={`space-y-4 ${className}`}>
-      {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-        <Input
-          placeholder="Cari produk ampas kopi..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 pr-10"
-        />
-        {searchQuery && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8"
-            onClick={() => setSearchQuery("")}
-          >
-            <X className="w-4 h-4" />
-          </Button>
-        )}
-        
-        {/* Search Suggestions */}
-        {searchQuery && (
-          <Card className="absolute top-full left-0 right-0 z-10 mt-1 max-h-60 overflow-y-auto">
-            <CardContent className="p-2">
-              {isSearching ? (
-                <div className="text-center py-4 text-muted-foreground">
-                  Mencari...
-                </div>
-              ) : searchResults?.products.length ? (
-                <div className="space-y-1">
-                  {searchResults.products.slice(0, 5).map((product) => (
-                    <button
-                      key={product.id}
-                      className="w-full text-left p-2 hover:bg-gray-100 rounded text-sm"
-                      onClick={() => setSearchQuery(product.title)}
-                    >
-                      {product.title}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {searchSuggestions.map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      className="w-full text-left p-2 hover:bg-gray-100 rounded text-sm text-muted-foreground"
-                      onClick={() => setSearchQuery(suggestion)}
-                    >
-                      <Search className="w-3 h-3 inline mr-2" />
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+    <div className={`space-y-6 ${className}`}>
+      {/* Clear All Button */}
+      <div className="flex items-center justify-between">
+        <h3 className="font-medium">Filter Produk</h3>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearAllFilters}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          <X className="h-4 w-4 mr-1" />
+          Reset
+        </Button>
       </div>
 
-      {/* Filter Controls */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {/* Sort Dropdown */}
+      {/* Waste Type Filter */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium">Jenis Limbah</Label>
+        <div className="space-y-2">
+          {wasteTypes.map((type) => (
+            <div key={type.value} className="flex items-center space-x-2">
+              <Checkbox
+                id={type.value}
+                checked={localFilters.wasteType === type.value}
+                onCheckedChange={(checked) => {
+                  handleFilterUpdate("wasteType", checked ? type.value : "");
+                }}
+              />
+              <Label htmlFor={type.value} className="text-sm cursor-pointer">
+                {type.label}
+              </Label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Category Filter */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium">Kategori</Label>
         <Select
-          value={`${sort.field}-${sort.direction}`}
-          onValueChange={(value) => {
-            const [field, direction] = value.split('-') as [ProductSort['field'], ProductSort['direction']];
-            handleSortChange({ field, direction });
-          }}
+          value={localFilters.category || ""}
+          onValueChange={(value) => handleFilterUpdate("category", value)}
         >
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Urutkan" />
+          <SelectTrigger>
+            <SelectValue placeholder="Pilih kategori" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="newest-desc">Terbaru</SelectItem>
-            <SelectItem value="oldest-asc">Terlama</SelectItem>
-            <SelectItem value="price_low-asc">Harga Terendah</SelectItem>
-            <SelectItem value="price_high-desc">Harga Tertinggi</SelectItem>
-            <SelectItem value="rating-desc">Rating Tertinggi</SelectItem>
-            <SelectItem value="popular-desc">Terpopuler</SelectItem>
+            <SelectItem value="">Semua Kategori</SelectItem>
+            {categoryOptions.map((category) => (
+              <SelectItem key={category.value} value={category.value}>
+                {category.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
-
-        {/* Filter Button */}
-        <Popover open={showFilters} onOpenChange={setShowFilters}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="relative">
-              <SlidersHorizontal className="w-4 h-4 mr-2" />
-              Filter
-              {activeFilterCount > 0 && (
-                <Badge variant="destructive" className="ml-2 px-1 py-0 text-xs">
-                  {activeFilterCount}
-                </Badge>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-0" align="start">
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Filter Produk</CardTitle>
-                  {activeFilterCount > 0 && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters}>
-                      <X className="w-4 h-4 mr-1" />
-                      Hapus
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Categories */}
-                <div>
-                  <Label className="text-sm font-medium mb-3 block">Kategori</Label>
-                  <div className="space-y-2">
-                    {PRODUCT_CATEGORIES.map((category) => (
-                      <div key={category.value} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`category-${category.value}`}
-                          checked={filters.categories?.includes(category.value)}
-                          onCheckedChange={(checked) => {
-                            const currentCategories = filters.categories || [];
-                            const newCategories = checked
-                              ? [...currentCategories, category.value]
-                              : currentCategories.filter(c => c !== category.value);
-                            handleFilterChange('categories', newCategories.length ? newCategories : undefined);
-                          }}
-                        />
-                        <Label htmlFor={`category-${category.value}`} className="text-sm cursor-pointer">
-                          {category.icon} {category.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Grades */}
-                <div>
-                  <Label className="text-sm font-medium mb-3 block">Grade Kualitas</Label>
-                  <div className="space-y-2">
-                    {COFFEE_GRADES.map((grade) => (
-                      <div key={grade.value} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`grade-${grade.value}`}
-                          checked={filters.grades?.includes(grade.value)}
-                          onCheckedChange={(checked) => {
-                            const currentGrades = filters.grades || [];
-                            const newGrades = checked
-                              ? [...currentGrades, grade.value]
-                              : currentGrades.filter(g => g !== grade.value);
-                            handleFilterChange('grades', newGrades.length ? newGrades : undefined);
-                          }}
-                        />
-                        <Label htmlFor={`grade-${grade.value}`} className="text-sm cursor-pointer">
-                          <div>
-                            <div className="font-medium">{grade.label}</div>
-                            <div className="text-xs text-muted-foreground">{grade.description}</div>
-                          </div>
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Price Range */}
-                <div>
-                  <Label className="text-sm font-medium mb-3 block">
-                    <DollarSign className="w-4 h-4 inline mr-1" />
-                    Rentang Harga
-                  </Label>
-                  <div className="space-y-3">
-                    <Slider
-                      value={priceRange}
-                      onValueChange={setPriceRange}
-                      max={1000000}
-                      min={0}
-                      step={5000}
-                      className="w-full"
-                    />
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>{formatCurrency(priceRange[0])}</span>
-                      <span>{formatCurrency(priceRange[1])}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Location */}
-                <div>
-                  <Label className="text-sm font-medium mb-3 block">
-                    <MapPin className="w-4 h-4 inline mr-1" />
-                    Lokasi
-                  </Label>
-                  <Input
-                    placeholder="Cari berdasarkan lokasi..."
-                    value={filters.location || ""}
-                    onChange={(e) => handleFilterChange('location', e.target.value)}
-                  />
-                </div>
-
-                {showAdvanced && (
-                  <>
-                    <Separator />
-
-                    {/* Advanced Filters */}
-                    <Collapsible>
-                      <CollapsibleTrigger asChild>
-                        <Button variant="ghost" className="w-full justify-between p-0">
-                          <span className="text-sm font-medium">Filter Lanjutan</span>
-                          <ChevronDown className="w-4 h-4" />
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="space-y-4 mt-4">
-                        {/* Verified Sellers Only */}
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="verified-only"
-                            checked={filters.verifiedOnly}
-                            onCheckedChange={(checked) => handleFilterChange('verifiedOnly', checked)}
-                          />
-                          <Label htmlFor="verified-only" className="text-sm cursor-pointer">
-                            Hanya seller terverifikasi
-                          </Label>
-                        </div>
-
-                        {/* Stock Available Only */}
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="stock-available"
-                            checked={filters.stockAvailable}
-                            onCheckedChange={(checked) => handleFilterChange('stockAvailable', checked)}
-                          />
-                          <Label htmlFor="stock-available" className="text-sm cursor-pointer">
-                            Hanya yang berstock
-                          </Label>
-                        </div>
-
-                        {/* Minimum Rating */}
-                        <div>
-                          <Label className="text-sm font-medium mb-2 block">
-                            <Star className="w-4 h-4 inline mr-1" />
-                            Rating Minimum
-                          </Label>
-                          <Select
-                            value={filters.minRating?.toString() || ""}
-                            onValueChange={(value) => handleFilterChange('minRating', value ? parseFloat(value) : undefined)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Semua rating" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="">Semua rating</SelectItem>
-                              <SelectItem value="4">4+ bintang</SelectItem>
-                              <SelectItem value="3">3+ bintang</SelectItem>
-                              <SelectItem value="2">2+ bintang</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </PopoverContent>
-        </Popover>
-
-        {/* Clear Filters */}
-        {activeFilterCount > 0 && (
-          <Button variant="outline" size="sm" onClick={clearFilters}>
-            <X className="w-4 h-4 mr-1" />
-            Hapus Filter ({activeFilterCount})
-          </Button>
-        )}
       </div>
 
-      {/* Active Filters Display */}
-      {activeFilterCount > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {searchQuery && (
-            <Badge variant="secondary" className="gap-1">
-              <Search className="w-3 h-3" />
-              "{searchQuery}"
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-4 w-4 p-0 hover:bg-transparent"
-                onClick={() => setSearchQuery("")}
-              >
-                <X className="w-3 h-3" />
-              </Button>
-            </Badge>
-          )}
-          
-          {filters.categories?.map((category) => {
-            const categoryInfo = PRODUCT_CATEGORIES.find(c => c.value === category);
-            return (
-              <Badge key={category} variant="secondary" className="gap-1">
-                {categoryInfo?.icon} {categoryInfo?.label}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-4 w-4 p-0 hover:bg-transparent"
-                  onClick={() => {
-                    const newCategories = filters.categories?.filter(c => c !== category);
-                    handleFilterChange('categories', newCategories?.length ? newCategories : undefined);
-                  }}
-                >
-                  <X className="w-3 h-3" />
-                </Button>
-              </Badge>
-            );
-          })}
+      <Separator />
 
-          {(priceRange[0] > 0 || priceRange[1] < 1000000) && (
-            <Badge variant="secondary" className="gap-1">
-              <DollarSign className="w-3 h-3" />
-              {formatCurrency(priceRange[0])} - {formatCurrency(priceRange[1])}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-4 w-4 p-0 hover:bg-transparent"
-                onClick={() => setPriceRange([0, 1000000])}
-              >
-                <X className="w-3 h-3" />
-              </Button>
-            </Badge>
-          )}
+      {/* Price Range Filter */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium">Rentang Harga (per kg)</Label>
+        <div className="space-y-4">
+          <Slider
+            value={[localFilters.minPrice || 5000, localFilters.maxPrice || 25000]}
+            onValueChange={handlePriceChange}
+            max={25000}
+            min={5000}
+            step={1000}
+            className="w-full"
+          />
+          <div className="flex items-center space-x-2">
+            <Input
+              type="number"
+              placeholder="Min"
+              value={localFilters.minPrice || ""}
+              onChange={(e) => setLocalFilters(prev => ({ 
+                ...prev, 
+                minPrice: Number(e.target.value) 
+              }))}
+              className="w-20 text-xs"
+            />
+            <span className="text-xs text-gray-500">-</span>
+            <Input
+              type="number"
+              placeholder="Max"
+              value={localFilters.maxPrice || ""}
+              onChange={(e) => setLocalFilters(prev => ({ 
+                ...prev, 
+                maxPrice: Number(e.target.value) 
+              }))}
+              className="w-20 text-xs"
+            />
+            <Button size="sm" onClick={applyPriceFilter}>
+              Terapkan
+            </Button>
+          </div>
         </div>
-      )}
+      </div>
+
+      <Separator />
+
+      {/* Grade Filter */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium">Grade</Label>
+        <Select
+          value={localFilters.grade || ""}
+          onValueChange={(value) => handleFilterUpdate("grade", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Pilih grade" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Semua Grade</SelectItem>
+            {grades.map((grade) => (
+              <SelectItem key={grade.value} value={grade.value}>
+                {grade.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Separator />
+
+      {/* Location Filter */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium">Lokasi</Label>
+        <Select
+          value={localFilters.location || ""}
+          onValueChange={(value) => handleFilterUpdate("location", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Pilih provinsi" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Semua Lokasi</SelectItem>
+            {provinces.map((province) => (
+              <SelectItem key={province} value={province}>
+                {province}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Separator />
+
+      {/* Certification Filters */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium">Sertifikasi</Label>
+        <div className="space-y-2">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="organic"
+              checked={localFilters.organicCertified || false}
+              onCheckedChange={(checked) => 
+                handleFilterUpdate("organicCertified", checked)
+              }
+            />
+            <Label htmlFor="organic" className="text-sm cursor-pointer">
+              Organik Bersertifikat
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="fairtrade"
+              checked={localFilters.fairTradeCertified || false}
+              onCheckedChange={(checked) => 
+                handleFilterUpdate("fairTradeCertified", checked)
+              }
+            />
+            <Label htmlFor="fairtrade" className="text-sm cursor-pointer">
+              Fair Trade
+            </Label>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

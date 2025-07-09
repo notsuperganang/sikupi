@@ -1,19 +1,11 @@
-// FILE PATH: /src/lib/hooks/use-products.ts
-
+// FILE: src/lib/hooks/use-products.ts (Updated)
 "use client";
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
-import { 
-  productsService, 
-  type Product,
-  type ProductFilters, 
-  type CreateProductRequest, 
-  type UpdateProductRequest,
-  type UploadImagesRequest,
-  type UploadImagesResponse
-} from "@/lib/api";
+import { mockProductsService } from "@/lib/mock/complete-mock-services";
 import { toast } from "sonner";
+import type { Product, ProductFilters } from "@/lib/types/product";
 
 // Query keys for React Query
 export const productKeys = {
@@ -39,10 +31,10 @@ export const productKeys = {
 export function useProducts(filters: ProductFilters = {}) {
   return useQuery({
     queryKey: productKeys.list(filters),
-    queryFn: () => productsService.getProducts(filters),
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
-    retry: 2,
+    queryFn: () => mockProductsService.getProducts(filters),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    retry: 1,
   });
 }
 
@@ -51,12 +43,12 @@ export function useInfiniteProducts(filters: ProductFilters = {}) {
   return useInfiniteQuery({
     queryKey: productKeys.infinite(filters),
     queryFn: ({ pageParam = 1 }) => 
-      productsService.getProducts({ ...filters, page: pageParam }),
+      mockProductsService.getProducts({ ...filters, page: pageParam }),
     getNextPageParam: (lastPage) => 
       lastPage.pagination.hasNextPage ? lastPage.pagination.currentPage + 1 : undefined,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    retry: 1,
     initialPageParam: 1,
   });
 }
@@ -65,11 +57,11 @@ export function useInfiniteProducts(filters: ProductFilters = {}) {
 export function useProduct(id: string) {
   return useQuery({
     queryKey: productKeys.detail(id),
-    queryFn: () => productsService.getProduct(id),
+    queryFn: () => mockProductsService.getProduct(id),
     enabled: !!id,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: 2,
+    retry: 1,
   });
 }
 
@@ -81,11 +73,11 @@ export function useSearchProducts(
 ) {
   return useQuery({
     queryKey: productKeys.search(query, filters),
-    queryFn: () => productsService.searchProducts(query, filters),
+    queryFn: () => mockProductsService.searchProducts(query, filters),
     enabled: enabled && !!query.trim(),
-    staleTime: 1 * 60 * 1000, // 1 minute for search results
-    gcTime: 3 * 60 * 1000, // 3 minutes
-    retry: 2,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
   });
 }
 
@@ -93,10 +85,10 @@ export function useSearchProducts(
 export function useFeaturedProducts(limit: number = 8) {
   return useQuery({
     queryKey: productKeys.featured(limit),
-    queryFn: () => productsService.getFeaturedProducts(limit),
+    queryFn: () => mockProductsService.getFeaturedProducts(limit),
     staleTime: 10 * 60 * 1000, // 10 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes
-    retry: 2,
+    retry: 1,
   });
 }
 
@@ -104,10 +96,10 @@ export function useFeaturedProducts(limit: number = 8) {
 export function useRecommendedProducts(productId?: string, limit: number = 6) {
   return useQuery({
     queryKey: productKeys.recommended(productId, limit),
-    queryFn: () => productsService.getRecommendedProducts(productId, limit),
+    queryFn: () => mockProductsService.getRecommendedProducts(productId, limit),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 15 * 60 * 1000, // 15 minutes
-    retry: 2,
+    retry: 1,
   });
 }
 
@@ -115,10 +107,10 @@ export function useRecommendedProducts(productId?: string, limit: number = 6) {
 export function useProductCategories() {
   return useQuery({
     queryKey: productKeys.categories(),
-    queryFn: () => productsService.getCategories(),
+    queryFn: () => mockProductsService.getCategories(),
     staleTime: 30 * 60 * 1000, // 30 minutes
     gcTime: 60 * 60 * 1000, // 1 hour
-    retry: 2,
+    retry: 1,
   });
 }
 
@@ -126,22 +118,28 @@ export function useProductCategories() {
 export function useSellerProducts(sellerId: string, filters: ProductFilters = {}) {
   return useQuery({
     queryKey: productKeys.seller(sellerId, filters),
-    queryFn: () => productsService.getSellerProducts(sellerId, filters),
+    queryFn: () => {
+      // Filter products by sellerId in mock service
+      return mockProductsService.getProducts(filters).then(result => ({
+        ...result,
+        products: result.products.filter(p => p.sellerId === sellerId)
+      }));
+    },
     enabled: !!sellerId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    retry: 1,
   });
 }
 
-// Get my products (for authenticated seller)
+// Get my products (for sellers)
 export function useMyProducts(filters: ProductFilters = {}) {
   return useQuery({
     queryKey: productKeys.my(filters),
-    queryFn: () => productsService.getMyProducts(filters),
-    staleTime: 30 * 1000, // 30 seconds for fresh data
-    gcTime: 2 * 60 * 1000, // 2 minutes
-    retry: 2,
+    queryFn: () => mockProductsService.getProducts(filters),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    retry: 1,
   });
 }
 
@@ -150,19 +148,17 @@ export function useCreateProduct() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateProductRequest) => productsService.createProduct(data),
-    onSuccess: (data) => {
-      // Invalidate and refetch relevant queries
-      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: productKeys.my() });
-      
-      toast.success('Product created successfully!', {
-        description: `${data.product.title} has been added to your store.`,
-      });
+    mutationFn: async (data: any) => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return { success: true, product: data };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
+      toast.success("Produk berhasil dibuat!");
     },
     onError: (error: any) => {
-      toast.error('Failed to create product', {
-        description: error.message || 'Something went wrong while creating the product.',
+      toast.error("Gagal membuat produk", {
+        description: error.message || "Silakan coba lagi",
       });
     },
   });
@@ -173,23 +169,17 @@ export function useUpdateProduct() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateProductRequest }) => 
-      productsService.updateProduct(id, data),
-    onSuccess: (data, { id }) => {
-      // Update specific product in cache
-      queryClient.setQueryData(productKeys.detail(id), { product: data.product });
-      
-      // Invalidate lists to refresh
-      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: productKeys.my() });
-      
-      toast.success('Product updated successfully!', {
-        description: `${data.product.title} has been updated.`,
-      });
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return { success: true, product: data };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
+      toast.success("Produk berhasil diperbarui!");
     },
     onError: (error: any) => {
-      toast.error('Failed to update product', {
-        description: error.message || 'Something went wrong while updating the product.',
+      toast.error("Gagal memperbarui produk", {
+        description: error.message || "Silakan coba lagi",
       });
     },
   });
@@ -200,100 +190,39 @@ export function useDeleteProduct() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => productsService.deleteProduct(id),
-    onSuccess: (_, id) => {
-      // Remove from cache
-      queryClient.removeQueries({ queryKey: productKeys.detail(id) });
-      
-      // Invalidate lists
-      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: productKeys.my() });
-      
-      toast.success('Product deleted successfully!');
+    mutationFn: async (id: string) => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
+      toast.success("Produk berhasil dihapus!");
     },
     onError: (error: any) => {
-      toast.error('Failed to delete product', {
-        description: error.message || 'Something went wrong while deleting the product.',
+      toast.error("Gagal menghapus produk", {
+        description: error.message || "Silakan coba lagi",
       });
     },
   });
 }
 
-// Upload product images mutation
-export function useUploadProductImages() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ productId, images }: { productId: string; images: File[] }) => 
-      productsService.uploadProductImages(productId, images),
-    onSuccess: (data, { productId }) => {
-      // Invalidate product detail to refetch with new images
-      queryClient.invalidateQueries({ queryKey: productKeys.detail(productId) });
-      
-      toast.success('Images uploaded successfully!', {
-        description: `${data.imageUrls.length} image(s) uploaded.`,
-      });
-    },
-    onError: (error: any) => {
-      const errorMessage = error.message || 'Failed to upload images';
-      toast.error('Failed to upload images', {
-        description: errorMessage,
-      });
-    },
-  });
-}
-
-// Toggle favorite mutation
+// Toggle favorite product mutation
 export function useToggleFavorite() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (productId: string) => productsService.toggleFavorite(productId),
-    onMutate: async (productId) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: productKeys.detail(productId) });
-      
-      // Snapshot the previous value
-      const previousProduct = queryClient.getQueryData(productKeys.detail(productId));
-      
-      // Optimistically update to the new value
-      queryClient.setQueryData(
-        productKeys.detail(productId),
-        (old: any) => {
-          if (old?.product) {
-            return {
-              ...old,
-              product: {
-                ...old.product,
-                // Note: We'd need to add isFavorite to Product type
-                // isFavorite: !old.product.isFavorite,
-              },
-            };
-          }
-          return old;
-        }
-      );
-      
-      // Return a context object with the snapshotted value
-      return { previousProduct };
+    mutationFn: async (productId: string) => {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return { success: true, isFavorite: true };
     },
-    onError: (err, productId, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousProduct) {
-        queryClient.setQueryData(productKeys.detail(productId), context.previousProduct);
-      }
-      
-      toast.error('Failed to update favorite status');
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
+      toast.success("Produk ditambahkan ke favorit!");
     },
-    onSuccess: (response, productId) => {
-      // Update any product lists that might contain this product
-      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
-      
-      toast.success(response.isFavorite ? 'Added to favorites' : 'Removed from favorites');
-    },
-    onSettled: (_, __, productId) => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey: productKeys.detail(productId) });
+    onError: (error: any) => {
+      toast.error("Gagal menambahkan ke favorit", {
+        description: error.message || "Silakan coba lagi",
+      });
     },
   });
 }
@@ -305,13 +234,11 @@ export function usePrefetchProduct() {
   return (id: string) => {
     queryClient.prefetchQuery({
       queryKey: productKeys.detail(id),
-      queryFn: () => productsService.getProduct(id),
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      queryFn: () => mockProductsService.getProduct(id),
+      staleTime: 5 * 60 * 1000,
     });
   };
 }
-
-// Utility hooks
 
 // Combined hook for product listing page
 export function useProductListingPage(filters: ProductFilters = {}) {
@@ -319,54 +246,18 @@ export function useProductListingPage(filters: ProductFilters = {}) {
   const categoriesQuery = useProductCategories();
   
   return {
-    // Products data
     products: productsQuery.data?.products || [],
     pagination: productsQuery.data?.pagination,
     filters: productsQuery.data?.filters,
-    
-    // Categories for filtering
     categories: categoriesQuery.data?.wasteTypes || [],
-    
-    // Loading states
     isLoadingProducts: productsQuery.isLoading,
     isLoadingCategories: categoriesQuery.isLoading,
     isLoading: productsQuery.isLoading || categoriesQuery.isLoading,
-    
-    // Error states
     productsError: productsQuery.error,
     categoriesError: categoriesQuery.error,
     error: productsQuery.error || categoriesQuery.error,
-    
-    // Refetch functions
     refetchProducts: productsQuery.refetch,
     refetchCategories: categoriesQuery.refetch,
-  };
-}
-
-// Combined hook for seller dashboard
-export function useSellerDashboard(filters: ProductFilters = {}) {
-  const myProductsQuery = useMyProducts(filters);
-  const categoriesQuery = useProductCategories();
-  
-  return {
-    // My products
-    products: myProductsQuery.data?.products || [],
-    pagination: myProductsQuery.data?.pagination,
-    
-    // Categories
-    categories: categoriesQuery.data?.wasteTypes || [],
-    
-    // Loading states
-    isLoading: myProductsQuery.isLoading || categoriesQuery.isLoading,
-    
-    // Error states
-    error: myProductsQuery.error || categoriesQuery.error,
-    
-    // Refetch
-    refetch: () => {
-      myProductsQuery.refetch();
-      categoriesQuery.refetch();
-    },
   };
 }
 

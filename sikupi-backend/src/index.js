@@ -24,24 +24,54 @@ const chatbotRoutes = require('./routes/chatbot');
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// Security middleware
-app.use(helmet());
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
-});
-app.use('/api/', limiter);
-
-// CORS configuration
+// CORS configuration FIRST - before other middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? ['https://yourdomain.com'] 
-    : ['http://localhost:3000'],
-  credentials: true
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
 }));
+
+// Handle preflight requests
+app.options('*', cors());
+
+// Security middleware (after CORS)
+app.use(helmet({
+  crossOriginEmbedderPolicy: false
+}));
+
+// RELAXED Rate limiting for development
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute (reduced from 15 minutes)
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // Much higher limit for development
+  message: {
+    error: 'Rate limit exceeded',
+    message: 'Too many requests from this IP, please try again later.',
+    retryAfter: '1 minute'
+  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skip: (req) => {
+    // Skip rate limiting for health check and static assets
+    return req.path === '/health' || req.path.startsWith('/static');
+  }
+});
+
+// Apply rate limiting only in production or specific endpoints
+if (process.env.NODE_ENV === 'production') {
+  app.use('/api/', limiter);
+} else {
+  // In development, use very relaxed rate limiting
+  const devLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 1000, // Very high limit for development
+    message: 'Development rate limit exceeded',
+  });
+  app.use('/api/', devLimiter);
+}
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -50,15 +80,20 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Compression middleware
 app.use(compression());
 
-// Logging middleware
-app.use(morgan('combined'));
+// Logging middleware (only log errors in development to reduce noise)
+if (process.env.NODE_ENV === 'production') {
+  app.use(morgan('combined'));
+} else {
+  app.use(morgan('dev'));
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV
   });
 });
 
@@ -82,6 +117,7 @@ app.get('/', (req, res) => {
   res.json({ 
     message: 'Sikupi Coffee Waste Marketplace API',
     version: '1.0.0',
+    environment: process.env.NODE_ENV,
     documentation: '/api/docs'
   });
 });
@@ -123,8 +159,9 @@ app.use((error, req, res, next) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Sikupi Backend API running on port ${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`🔄 CORS enabled for: ${process.env.NODE_ENV === 'production' ? 'production domains' : 'localhost:3000'}`);
 });
 
 module.exports = app;

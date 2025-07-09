@@ -1,297 +1,376 @@
+// FILE: src/components/cart/checkout-page.tsx
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MapPin, CreditCard, Truck, CheckCircle } from "lucide-react";
+import Image from "next/image";
+import { CreditCard, MapPin, Truck, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Container } from "@/components/common/container";
-import { FormInput } from "@/components/forms/form-input";
-import { FormSelect } from "@/components/forms/form-select";
-import { FormTextarea } from "@/components/forms/form-textarea";
-import { CartItemComponent } from "./cart-item";
-import { CartSummary } from "./cart-summary";
-import { useCartStore } from "@/stores/cart-store";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { checkoutSchema, type CheckoutFormData } from "@/lib/validations";
-import { toast } from "sonner";
-
-const PAYMENT_METHODS = [
-  { value: "bank_transfer", label: "Transfer Bank" },
-  { value: "credit_card", label: "Kartu Kredit" },
-  { value: "e_wallet", label: "E-Wallet" },
-];
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { useCart } from "@/lib/hooks/use-cart";
+import { useCreateOrder } from "@/lib/hooks/use-orders";
+import { formatCurrency } from "@/lib/utils";
 
 export function CheckoutPage() {
   const router = useRouter();
-  const { items, summary, clearCart } = useCartStore();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const { data: cartData, isLoading } = useCart();
+  const createOrder = useCreateOrder();
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<CheckoutFormData>({
-    resolver: zodResolver(checkoutSchema),
-    defaultValues: {
-      items: items.map(item => ({
-        productId: item.productId,
-        quantity: item.quantity,
-      })),
-      shippingAddress: {
-        fullName: "",
-        phone: "",
-        address: "",
-        city: "",
-        province: "",
-        postalCode: "",
-      },
-      paymentMethod: undefined,
-      notes: "",
-    },
+  const [shippingData, setShippingData] = useState({
+    fullName: "",
+    phone: "",
+    address: "",
+    city: "",
+    province: "",
+    postalCode: "",
+    notes: "",
   });
 
-  const watchedPaymentMethod = watch("paymentMethod");
+  const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
+  const [shippingMethod, setShippingMethod] = useState("jne_regular");
 
-  const onSubmit = async (data: CheckoutFormData) => {
-    setIsProcessing(true);
+  const cart = cartData?.cart;
+  const items = cart?.items || [];
+
+  const subtotal = cart?.totalPrice || 0;
+  const adminFee = 5000;
+  const shippingCost = 15000;
+  const total = subtotal + adminFee + shippingCost;
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setShippingData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
+    if (items.length === 0) return;
+
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // For demo purposes, we'll create an order for the first item
+      const firstItem = items[0];
       
-      // Clear cart after successful order
-      clearCart();
-      
-      toast.success("Pesanan berhasil dibuat!", {
-        description: "Kami akan segera memproses pesanan Anda.",
+      await createOrder.mutateAsync({
+        productId: firstItem.productId,
+        quantity: firstItem.quantity,
+        buyerId: "user-002", // Demo buyer ID
+        paymentMethod: paymentMethod as any,
+        shippingMethod,
+        shippingCost,
+        shippingAddress: `${shippingData.address}, ${shippingData.city}, ${shippingData.province} ${shippingData.postalCode}`,
+        notes: shippingData.notes,
       });
-      
-      // Redirect to order confirmation or orders page
-      router.push("/dashboard/pesanan");
-      
+
+      router.push('/dashboard/pesanan');
     } catch (error) {
-      toast.error("Gagal memproses pesanan", {
-        description: "Silakan coba lagi atau hubungi customer service.",
-      });
-    } finally {
-      setIsProcessing(false);
+      console.error('Checkout error:', error);
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="h-8 bg-gray-200 rounded mb-6 animate-pulse" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-32 bg-gray-200 rounded animate-pulse" />
+              ))}
+            </div>
+            <div className="h-96 bg-gray-200 rounded animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (items.length === 0) {
     return (
-      <div className="py-8">
-        <Container>
-          <div className="text-center py-12">
-            <div className="bg-muted rounded-full p-8 w-fit mx-auto mb-6">
-              <CheckCircle className="h-12 w-12 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-semibold mb-2">Keranjang Kosong</h2>
-            <p className="text-muted-foreground mb-8">
-              Tidak ada item untuk checkout. Silakan tambahkan produk ke keranjang terlebih dahulu.
-            </p>
-            <Button asChild size="lg">
-              <Link href="/produk">Mulai Belanja</Link>
-            </Button>
-          </div>
-        </Container>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto text-center py-16">
+          <ShoppingCart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Keranjang Kosong
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Tidak ada produk untuk di-checkout
+          </p>
+          <Button onClick={() => router.push('/produk')}>
+            Kembali Belanja
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="py-8">
-      <Container>
-        {/* Header */}
-        <div className="mb-8">
-          <Button variant="ghost" asChild className="mb-4">
-            <Link href="/keranjang">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Kembali ke Keranjang
-            </Link>
-          </Button>
-          <h1 className="text-3xl font-bold">Checkout</h1>
-        </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-2xl font-bold mb-8">Checkout</h1>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Checkout Form */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Shipping Address */}
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Left Column - Forms */}
+            <div className="space-y-6">
+              {/* Shipping Information */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5" />
-                    Alamat Pengiriman
+                  <CardTitle className="flex items-center">
+                    <MapPin className="h-5 w-5 mr-2" />
+                    Informasi Pengiriman
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormInput
-                      label="Nama Lengkap"
+                    <div>
+                      <Label htmlFor="fullName">Nama Lengkap</Label>
+                      <Input
+                        id="fullName"
+                        name="fullName"
+                        value={shippingData.fullName}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="phone">Nomor Telepon</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        value={shippingData.phone}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="address">Alamat Lengkap</Label>
+                    <Textarea
+                      id="address"
+                      name="address"
+                      value={shippingData.address}
+                      onChange={handleInputChange}
+                      placeholder="Masukkan alamat lengkap"
                       required
-                      error={errors.shippingAddress?.fullName?.message}
-                      {...register("shippingAddress.fullName")}
-                    />
-                    <FormInput
-                      label="Nomor Telepon"
-                      type="tel"
-                      required
-                      error={errors.shippingAddress?.phone?.message}
-                      {...register("shippingAddress.phone")}
                     />
                   </div>
-                  
-                  <FormTextarea
-                    label="Alamat Lengkap"
-                    required
-                    rows={3}
-                    error={errors.shippingAddress?.address?.message}
-                    {...register("shippingAddress.address")}
-                  />
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormInput
-                      label="Kota"
-                      required
-                      error={errors.shippingAddress?.city?.message}
-                      {...register("shippingAddress.city")}
-                    />
-                    <FormInput
-                      label="Provinsi"
-                      required
-                      error={errors.shippingAddress?.province?.message}
-                      {...register("shippingAddress.province")}
-                    />
-                    <FormInput
-                      label="Kode Pos"
-                      required
-                      maxLength={5}
-                      error={errors.shippingAddress?.postalCode?.message}
-                      {...register("shippingAddress.postalCode")}
+                    <div>
+                      <Label htmlFor="city">Kota</Label>
+                      <Input
+                        id="city"
+                        name="city"
+                        value={shippingData.city}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="province">Provinsi</Label>
+                      <Select
+                        value={shippingData.province}
+                        onValueChange={(value) => setShippingData(prev => ({ ...prev, province: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih provinsi" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="jawa-barat">Jawa Barat</SelectItem>
+                          <SelectItem value="jawa-tengah">Jawa Tengah</SelectItem>
+                          <SelectItem value="jawa-timur">Jawa Timur</SelectItem>
+                          <SelectItem value="jakarta">DKI Jakarta</SelectItem>
+                          <SelectItem value="aceh">Aceh</SelectItem>
+                          <SelectItem value="sumatera-utara">Sumatera Utara</SelectItem>
+                          <SelectItem value="sulawesi-selatan">Sulawesi Selatan</SelectItem>
+                          <SelectItem value="bali">Bali</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="postalCode">Kode Pos</Label>
+                      <Input
+                        id="postalCode"
+                        name="postalCode"
+                        value={shippingData.postalCode}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="notes">Catatan (Opsional)</Label>
+                    <Textarea
+                      id="notes"
+                      name="notes"
+                      value={shippingData.notes}
+                      onChange={handleInputChange}
+                      placeholder="Catatan untuk penjual"
                     />
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Shipping Method */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Truck className="h-5 w-5 mr-2" />
+                    Metode Pengiriman
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <RadioGroup value={shippingMethod} onValueChange={setShippingMethod}>
+                    <div className="flex items-center space-x-2 p-3 border rounded">
+                      <RadioGroupItem value="jne_regular" id="jne_regular" />
+                      <Label htmlFor="jne_regular" className="flex-1">
+                        <div className="flex justify-between">
+                          <span>JNE Regular</span>
+                          <span className="font-medium">{formatCurrency(15000)}</span>
+                        </div>
+                        <p className="text-sm text-gray-600">Estimasi 2-3 hari kerja</p>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 border rounded">
+                      <RadioGroupItem value="sicepat_regular" id="sicepat_regular" />
+                      <Label htmlFor="sicepat_regular" className="flex-1">
+                        <div className="flex justify-between">
+                          <span>SiCepat Regular</span>
+                          <span className="font-medium">{formatCurrency(12000)}</span>
+                        </div>
+                        <p className="text-sm text-gray-600">Estimasi 2-4 hari kerja</p>
+                      </Label>
+                    </div>
+                  </RadioGroup>
                 </CardContent>
               </Card>
 
               {/* Payment Method */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
+                  <CardTitle className="flex items-center">
+                    <CreditCard className="h-5 w-5 mr-2" />
                     Metode Pembayaran
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <FormSelect
-                    label="Pilih Metode Pembayaran"
-                    required
-                    placeholder="Pilih metode pembayaran"
-                    options={PAYMENT_METHODS}
-                    value={watchedPaymentMethod}
-                    onValueChange={(value) => {
-                      register("paymentMethod").onChange({
-                        target: { value, name: "paymentMethod" }
-                      });
-                    }}
-                    error={errors.paymentMethod?.message}
-                  />
-                  
-                  {watchedPaymentMethod && (
-                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="text-sm text-blue-800">
-                        {watchedPaymentMethod === "bank_transfer" && 
-                          "Detail rekening bank akan dikirim setelah pesanan dikonfirmasi."}
-                        {watchedPaymentMethod === "credit_card" && 
-                          "Anda akan diarahkan ke halaman pembayaran yang aman."}
-                        {watchedPaymentMethod === "e_wallet" && 
-                          "Pilih aplikasi e-wallet yang ingin digunakan pada langkah selanjutnya."}
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Additional Notes */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Truck className="h-5 w-5" />
-                    Catatan Tambahan
-                  </CardTitle>
-                </CardHeader>
                 <CardContent>
-                  <FormTextarea
-                    label="Catatan untuk penjual (opsional)"
-                    placeholder="Tulis catatan khusus untuk pesanan ini..."
-                    rows={3}
-                    maxLength={500}
-                    showCharacterCount
-                    error={errors.notes?.message}
-                    {...register("notes")}
-                  />
+                  <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <div className="flex items-center space-x-2 p-3 border rounded">
+                      <RadioGroupItem value="bank_transfer" id="bank_transfer" />
+                      <Label htmlFor="bank_transfer" className="flex-1">
+                        <span>Transfer Bank</span>
+                        <p className="text-sm text-gray-600">BCA, BNI, BRI, Mandiri</p>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 border rounded">
+                      <RadioGroupItem value="e_wallet" id="e_wallet" />
+                      <Label htmlFor="e_wallet" className="flex-1">
+                        <span>E-Wallet</span>
+                        <p className="text-sm text-gray-600">OVO, GoPay, DANA</p>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 border rounded opacity-50">
+                      <RadioGroupItem value="cod" id="cod" disabled />
+                      <Label htmlFor="cod" className="flex-1">
+                        <span>COD (Bayar di Tempat)</span>
+                        <p className="text-sm text-gray-600">Tidak tersedia untuk produk ini</p>
+                      </Label>
+                    </div>
+                  </RadioGroup>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Order Summary */}
-            <div className="lg:col-span-1">
-              <div className="sticky top-24 space-y-6">
-                {/* Items Preview */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Pesanan Anda ({items.length} item)</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
+            {/* Right Column - Order Summary */}
+            <div>
+              <Card className="sticky top-4">
+                <CardHeader>
+                  <CardTitle>Ringkasan Pesanan</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Order Items */}
+                  <div className="space-y-3">
                     {items.map((item) => (
-                      <CartItemComponent
-                        key={item.id}
-                        item={item}
-                        variant="checkout"
-                        showRemove={false}
-                      />
+                      <div key={item.id} className="flex items-center space-x-3">
+                        <div className="relative h-12 w-12 flex-shrink-0 rounded overflow-hidden">
+                          <Image
+                            src={item.product?.images?.[0] || "/placeholder.png"}
+                            alt={item.product?.title || "Product"}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium truncate">
+                            {item.product?.title}
+                          </h4>
+                          <p className="text-xs text-gray-600">
+                            {item.quantity} kg × {formatCurrency(item.pricePerKg)}
+                          </p>
+                        </div>
+                        <div className="text-sm font-medium">
+                          {formatCurrency(item.totalPrice)}
+                        </div>
+                      </div>
                     ))}
-                  </CardContent>
-                </Card>
+                  </div>
 
-                {/* Summary */}
-                <CartSummary 
-                  variant="checkout"
-                  showCheckout={false}
-                />
+                  <Separator />
 
-                {/* Checkout Button */}
-                <Button
-                  type="submit"
-                  className="w-full"
-                  size="lg"
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? "Memproses..." : `Buat Pesanan - ${summary.total.toLocaleString("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 })}`}
-                </Button>
+                  {/* Pricing Details */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Subtotal</span>
+                      <span>{formatCurrency(subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Ongkir</span>
+                      <span>{formatCurrency(shippingCost)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Biaya Admin</span>
+                      <span>{formatCurrency(adminFee)}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between font-semibold text-lg">
+                      <span>Total</span>
+                      <span>{formatCurrency(total)}</span>
+                    </div>
+                  </div>
 
-                {/* Terms */}
-                <div className="text-xs text-muted-foreground text-center">
-                  Dengan melanjutkan, Anda menyetujui{" "}
-                  <Link href="/syarat" className="text-primary hover:underline">
-                    Syarat & Ketentuan
-                  </Link>{" "}
-                  dan{" "}
-                  <Link href="/privasi" className="text-primary hover:underline">
-                    Kebijakan Privasi
-                  </Link>{" "}
-                  kami.
-                </div>
-              </div>
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="w-full"
+                    disabled={createOrder.isPending}
+                  >
+                    {createOrder.isPending ? "Memproses..." : "Buat Pesanan"}
+                  </Button>
+
+                  <p className="text-xs text-gray-500 text-center">
+                    Dengan menekan tombol "Buat Pesanan", Anda menyetujui{" "}
+                    <a href="#" className="text-green-600 hover:underline">
+                      Syarat & Ketentuan
+                    </a>{" "}
+                    kami.
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </form>
-      </Container>
+      </div>
     </div>
   );
 }

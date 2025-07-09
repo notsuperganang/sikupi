@@ -1,65 +1,39 @@
-import type { Metadata, Viewport } from "next"; // 1. Tambahkan Viewport
+// FILE: src/app/layout.tsx
+import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { QueryProvider } from "@/lib/providers/query-provider";
-import { Toaster } from "sonner";
 import "./globals.css";
+import { QueryProvider } from "@/lib/providers/query-provider";
+import { Toaster } from "@/components/ui/sonner";
+import { AuthInitializer } from "@/components/auth-initializer";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
+const inter = Inter({ subsets: ["latin"] });
 
-// 2. Objek metadata sekarang tidak lagi berisi viewport
 export const metadata: Metadata = {
-  title: "Sikupi - Marketplace Ampas Kopi Cerdas",
-  description: "Platform marketplace inovatif untuk jual-beli ampas kopi yang didukung teknologi AI. Menghubungkan produsen ampas kopi dengan pembeli untuk menciptakan ekonomi sirkular berkelanjutan.",
-  keywords: ["ampas kopi", "marketplace", "sustainable", "AI", "coffee waste", "circular economy"],
+  title: "Sikupi - Smart Coffee Waste Marketplace",
+  description: "Platform marketplace untuk limbah kopi yang cerdas dan berkelanjutan",
+  keywords: ["coffee waste", "marketplace", "sustainable", "circular economy"],
   authors: [{ name: "Sikupi Team" }],
-  creator: "Sikupi",
-  publisher: "Sikupi",
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
   openGraph: {
-    title: "Sikupi - Marketplace Ampas Kopi Cerdas",
-    description: "Platform marketplace inovatif untuk jual-beli ampas kopi yang didukung teknologi AI",
-    url: "https://sikupi.com",
-    siteName: "Sikupi",
+    title: "Sikupi - Smart Coffee Waste Marketplace",
+    description: "Platform marketplace untuk limbah kopi yang cerdas dan berkelanjutan",
     type: "website",
     locale: "id_ID",
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "Sikupi - Marketplace Ampas Kopi Cerdas",
-    description: "Platform marketplace inovatif untuk jual-beli ampas kopi yang didukung teknologi AI",
-  },
-};
-
-// 3. Buat ekspor terpisah untuk viewport
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="id" className={inter.variable}>
-      <body className="font-sans antialiased">
+    <html lang="id" suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
         <QueryProvider>
-          {children}
-          <Toaster 
-            position="top-right" 
-            richColors 
-            closeButton 
-            theme="light"
-          />
+          <AuthInitializer>
+            {children}
+          </AuthInitializer>
+          <Toaster position="bottom-right" />
         </QueryProvider>
       </body>
     </html>

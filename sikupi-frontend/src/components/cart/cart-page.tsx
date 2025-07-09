@@ -1,211 +1,247 @@
+// FILE: src/components/cart/cart-page.tsx
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, ShoppingCart, Trash2, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Container } from "@/components/common/container";
-import { CartItemComponent } from "./cart-item";
-import { CartSummary } from "./cart-summary";
-import { useCartStore } from "@/stores/cart-store";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { Minus, Plus, Trash2, ArrowRight, ShoppingCart } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { useCart, useUpdateCartItem, useRemoveCartItem, useClearCart } from "@/lib/hooks/use-cart";
+import { formatCurrency } from "@/lib/utils";
+import Link from "next/link";
 
 export function CartPage() {
   const router = useRouter();
-  const { items, summary, clearCart, syncCart } = useCartStore();
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const [isSelectAll, setIsSelectAll] = useState(false);
+  const { data: cartData, isLoading } = useCart();
+  const updateCartItem = useUpdateCartItem();
+  const removeCartItem = useRemoveCartItem();
+  const clearCart = useClearCart();
 
-  const handleSelectAll = (checked: boolean) => {
-    setIsSelectAll(checked);
-    if (checked) {
-      setSelectedItems(items.map(item => item.id));
-    } else {
-      setSelectedItems([]);
-    }
+  const cart = cartData?.cart;
+  const items = cart?.items || [];
+
+  const handleUpdateQuantity = (itemId: string, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    
+    updateCartItem.mutate({
+      itemId,
+      data: { quantity: newQuantity }
+    });
   };
 
-  const handleSelectItem = (itemId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedItems(prev => [...prev, itemId]);
-    } else {
-      setSelectedItems(prev => prev.filter(id => id !== itemId));
-      setIsSelectAll(false);
-    }
+  const handleRemoveItem = (itemId: string) => {
+    removeCartItem.mutate(itemId);
   };
 
-  const handleRemoveSelected = () => {
-    // This would need to be implemented in the cart store
-    // For now, we'll just clear the selection
-    setSelectedItems([]);
-    setIsSelectAll(false);
+  const handleClearCart = () => {
+    clearCart.mutate();
   };
 
   const handleCheckout = () => {
-    if (items.length === 0) return;
-    router.push("/checkout");
+    router.push('/checkout');
   };
 
-  const handleSyncCart = () => {
-    syncCart();
-  };
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="h-8 bg-gray-200 rounded mb-6 animate-pulse" />
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-24 bg-gray-200 rounded animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
-      <div className="py-8">
-        <Container>
-          {/* Header */}
-          <div className="mb-8">
-            <Button variant="ghost" asChild className="mb-4">
-              <Link href="/produk">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Kembali ke Produk
-              </Link>
-            </Button>
-            <h1 className="text-3xl font-bold">Keranjang Belanja</h1>
-          </div>
-
-          {/* Empty State */}
-          <div className="text-center py-12">
-            <div className="bg-muted rounded-full p-8 w-fit mx-auto mb-6">
-              <ShoppingCart className="h-12 w-12 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-semibold mb-2">Keranjang Kosong</h2>
-            <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-              Belum ada produk di keranjang Anda. Jelajahi produk ampas kopi berkualitas dan mulai berbelanja sekarang.
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-2xl font-bold mb-8">Keranjang Belanja</h1>
+          
+          <div className="text-center py-16">
+            <ShoppingCart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Keranjang Anda Kosong
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Belum ada produk dalam keranjang Anda
             </p>
-            <Button asChild size="lg">
+            <Button asChild>
               <Link href="/produk">
                 Mulai Belanja
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </div>
-        </Container>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="py-8">
-      <Container>
-        {/* Header */}
-        <div className="mb-8">
-          <Button variant="ghost" asChild className="mb-4">
-            <Link href="/produk">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Lanjut Belanja
-            </Link>
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-2xl font-bold">Keranjang Belanja</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClearCart}
+            className="text-red-600 hover:text-red-700"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Kosongkan Keranjang
           </Button>
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold">Keranjang Belanja</h1>
-            <Button variant="outline" size="sm" onClick={handleSyncCart}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Sync
-            </Button>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Bulk Actions */}
-            <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  checked={isSelectAll}
-                  onCheckedChange={handleSelectAll}
-                />
-                <span className="text-sm font-medium">
-                  Pilih Semua ({items.length} item)
-                </span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                {selectedItems.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRemoveSelected}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Hapus Terpilih ({selectedItems.length})
-                  </Button>
-                )}
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearCart}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Kosongkan Keranjang
-                </Button>
-              </div>
-            </div>
-
-            {/* Cart Items List */}
-            <div className="space-y-4">
-              {items.map((item) => (
-                <div key={item.id} className="flex items-start gap-4">
-                  <div className="pt-4">
-                    <Checkbox
-                      checked={selectedItems.includes(item.id)}
-                      onCheckedChange={(checked) => handleSelectItem(item.id, checked)}
-                    />
+          <div className="lg:col-span-2 space-y-4">
+            {items.map((item) => (
+              <Card key={item.id}>
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4">
+                    <div className="relative h-20 w-20 flex-shrink-0 rounded-lg overflow-hidden">
+                      <Image
+                        src={item.product?.images?.[0] || "/placeholder.png"}
+                        alt={item.product?.title || "Product"}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg mb-1">
+                        {item.product?.title}
+                      </h3>
+                      <p className="text-gray-600 text-sm mb-2">
+                        {item.product?.description?.substring(0, 100)}...
+                      </p>
+                      
+                      <div className="flex items-center space-x-2 mb-3">
+                        <Badge variant="secondary" className="text-xs">
+                          {item.product?.wasteType === "coffee_grounds" ? "Ampas Kopi" :
+                           item.product?.wasteType === "coffee_pulp" ? "Pulp Kopi" :
+                           item.product?.wasteType === "coffee_husks" ? "Kulit Kopi" :
+                           "Chaff Kopi"}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          Grade {item.product?.grade}
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                            disabled={updateCartItem.isPending}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          
+                          <span className="text-sm font-medium min-w-[2rem] text-center">
+                            {item.quantity} kg
+                          </span>
+                          
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                            disabled={updateCartItem.isPending}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600">
+                            {formatCurrency(item.pricePerKg)}/kg
+                          </p>
+                          <p className="font-semibold text-lg">
+                            {formatCurrency(item.totalPrice)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveItem(item.id)}
+                      disabled={removeCartItem.isPending}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <div className="flex-1">
-                    <CartItemComponent
-                      item={item}
-                      variant="default"
-                      showRemove={true}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Recommended Products */}
-            <div className="mt-12">
-              <h3 className="text-lg font-semibold mb-4">
-                Mungkin Anda Juga Suka
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* This would be populated with recommended products */}
-                <div className="bg-muted/50 rounded-lg p-4 text-center text-sm text-muted-foreground">
-                  Rekomendasi produk akan muncul di sini
-                </div>
-              </div>
-            </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
           {/* Cart Summary */}
           <div className="lg:col-span-1">
-            <div className="sticky top-24">
-              <CartSummary 
-                variant="default"
-                showCheckout={true}
-                onCheckout={handleCheckout}
-              />
-              
-              {/* Security Info */}
-              <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
-                <h4 className="font-semibold text-green-800 mb-2">
-                  Belanja Aman & Terpercaya
-                </h4>
-                <ul className="text-sm text-green-700 space-y-1">
-                  <li>• Pembayaran 100% aman</li>
-                  <li>• Garansi uang kembali</li>
-                  <li>• Produk berkualitas terjamin</li>
-                  <li>• Customer service 24/7</li>
-                </ul>
-              </div>
-            </div>
+            <Card className="sticky top-4">
+              <CardHeader>
+                <CardTitle>Ringkasan Pesanan</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal ({cart?.totalItems} item)</span>
+                  <span>{formatCurrency(cart?.totalPrice || 0)}</span>
+                </div>
+                
+                <div className="flex justify-between text-sm">
+                  <span>Estimasi Ongkir</span>
+                  <span className="text-gray-500">Dihitung di checkout</span>
+                </div>
+                
+                <div className="flex justify-between text-sm">
+                  <span>Biaya Admin</span>
+                  <span>{formatCurrency(5000)}</span>
+                </div>
+                
+                <Separator />
+                
+                <div className="flex justify-between font-semibold text-lg">
+                  <span>Total</span>
+                  <span>{formatCurrency((cart?.totalPrice || 0) + 5000)}</span>
+                </div>
+                
+                <Button 
+                  className="w-full" 
+                  size="lg"
+                  onClick={handleCheckout}
+                >
+                  Lanjutkan ke Checkout
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  asChild
+                >
+                  <Link href="/produk">
+                    Lanjutkan Belanja
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </div>
-      </Container>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,9 @@
-import { Metadata } from "next";
+// FILE: src/app/dashboard/pesanan/page.tsx
+"use client";
+
+import { useState } from "react";
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
-import { DashboardHeader } from "@/components/dashboard/dashboard-header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -14,279 +16,234 @@ import {
   Truck,
   CheckCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Calendar,
+  User,
+  MapPin
 } from "lucide-react";
-
-export const metadata: Metadata = {
-  title: "Pesanan - Dashboard Sikupi",
-  description: "Kelola semua pesanan produk ampas kopi Anda. Lihat status, proses, dan lacak pengiriman.",
-};
-
-// Mock data - replace with actual API calls
-const ORDERS = [
-  {
-    id: "ORD-001",
-    customer: "Ahmad Fauzi",
-    email: "ahmad.fauzi@email.com",
-    product: "Ampas Kopi Grade A",
-    quantity: "2 kg",
-    total: "Rp 85.000",
-    status: "pending",
-    date: "2024-01-15",
-    address: "Jl. Merdeka No. 123, Jakarta Pusat",
-    payment: "Transfer Bank",
-  },
-  {
-    id: "ORD-002",
-    customer: "Siti Nurhaliza",
-    email: "siti.nurhaliza@email.com",
-    product: "Ampas Kopi Grade B",
-    quantity: "5 kg",
-    total: "Rp 175.000",
-    status: "processing",
-    date: "2024-01-14",
-    address: "Jl. Sudirman No. 456, Jakarta Selatan",
-    payment: "E-Wallet",
-  },
-  {
-    id: "ORD-003",
-    customer: "Budi Santoso",
-    email: "budi.santoso@email.com",
-    product: "Ampas Kopi Grade A",
-    quantity: "1 kg",
-    total: "Rp 45.000",
-    status: "shipped",
-    date: "2024-01-13",
-    address: "Jl. Thamrin No. 789, Jakarta Pusat",
-    payment: "Kartu Kredit",
-  },
-  {
-    id: "ORD-004",
-    customer: "Rina Kartika",
-    email: "rina.kartika@email.com",
-    product: "Ampas Kopi Grade B",
-    quantity: "3 kg",
-    total: "Rp 120.000",
-    status: "delivered",
-    date: "2024-01-12",
-    address: "Jl. Gatot Subroto No. 101, Jakarta Selatan",
-    payment: "Transfer Bank",
-  },
-];
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "pending":
-      return "bg-yellow-100 text-yellow-800";
-    case "processing":
-      return "bg-blue-100 text-blue-800";
-    case "shipped":
-      return "bg-purple-100 text-purple-800";
-    case "delivered":
-      return "bg-green-100 text-green-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
-};
-
-const getStatusLabel = (status: string) => {
-  switch (status) {
-    case "pending":
-      return "Menunggu";
-    case "processing":
-      return "Diproses";
-    case "shipped":
-      return "Dikirim";
-    case "delivered":
-      return "Selesai";
-    default:
-      return status;
-  }
-};
-
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case "pending":
-      return Clock;
-    case "processing":
-      return Package;
-    case "shipped":
-      return Truck;
-    case "delivered":
-      return CheckCircle;
-    default:
-      return AlertCircle;
-  }
-};
-
-const filterOrdersByStatus = (orders: typeof ORDERS, status: string) => {
-  if (status === "all") return orders;
-  return orders.filter(order => order.status === status);
-};
-
-const getOrderCounts = (orders: typeof ORDERS) => {
-  return {
-    all: orders.length,
-    pending: orders.filter(o => o.status === "pending").length,
-    processing: orders.filter(o => o.status === "processing").length,
-    shipped: orders.filter(o => o.status === "shipped").length,
-    delivered: orders.filter(o => o.status === "delivered").length,
-  };
-};
-
-function OrderCard({ order }: { order: typeof ORDERS[0] }) {
-  const StatusIcon = getStatusIcon(order.status);
-  
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <StatusIcon className="h-4 w-4" />
-            <CardTitle className="text-lg">#{order.id}</CardTitle>
-          </div>
-          <Badge className={getStatusColor(order.status)}>
-            {getStatusLabel(order.status)}
-          </Badge>
-        </div>
-        <CardDescription>{order.date}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm font-medium">Pelanggan</p>
-            <p className="text-sm text-muted-foreground">{order.customer}</p>
-            <p className="text-xs text-muted-foreground">{order.email}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium">Produk</p>
-            <p className="text-sm text-muted-foreground">{order.product}</p>
-            <p className="text-xs text-muted-foreground">{order.quantity}</p>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm font-medium">Alamat Pengiriman</p>
-            <p className="text-sm text-muted-foreground">{order.address}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium">Pembayaran</p>
-            <p className="text-sm text-muted-foreground">{order.payment}</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center justify-between pt-4 border-t">
-          <div>
-            <p className="text-sm font-medium">Total</p>
-            <p className="text-lg font-bold text-primary">{order.total}</p>
-          </div>
-          <Button variant="outline" size="sm">
-            <Eye className="h-4 w-4 mr-2" />
-            Detail
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+import { useMyOrders } from "@/lib/hooks/use-orders";
+import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function OrdersPage() {
-  const orderCounts = getOrderCounts(ORDERS);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   
+  const { data: ordersData, isLoading } = useMyOrders({
+    search: searchQuery,
+    status: statusFilter === "all" ? undefined : statusFilter,
+  });
+
+  const orders = ordersData?.orders || [];
+
+  const statusConfig = {
+    pending: {
+      label: "Menunggu Pembayaran",
+      color: "bg-yellow-100 text-yellow-800",
+      icon: Clock,
+    },
+    processing: {
+      label: "Diproses",
+      color: "bg-blue-100 text-blue-800",
+      icon: Package,
+    },
+    shipped: {
+      label: "Dikirim",
+      color: "bg-green-100 text-green-800",
+      icon: Truck,
+    },
+    delivered: {
+      label: "Selesai",
+      color: "bg-gray-100 text-gray-800",
+      icon: CheckCircle,
+    },
+    cancelled: {
+      label: "Dibatalkan",
+      color: "bg-red-100 text-red-800",
+      icon: AlertCircle,
+    },
+  };
+
+  const getStatusCounts = () => {
+    return {
+      all: orders.length,
+      pending: orders.filter(o => o.status === "pending").length,
+      processing: orders.filter(o => o.status === "processing").length,
+      shipped: orders.filter(o => o.status === "shipped").length,
+      delivered: orders.filter(o => o.status === "delivered").length,
+      cancelled: orders.filter(o => o.status === "cancelled").length,
+    };
+  };
+
+  const statusCounts = getStatusCounts();
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="h-8 bg-gray-200 rounded animate-pulse" />
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-24 bg-gray-200 rounded animate-pulse" />
+            ))}
+          </div>
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Header */}
-        <DashboardHeader
-          title="Pesanan"
-          description="Kelola semua pesanan produk ampas kopi Anda."
-          breadcrumbs={[{ label: "Pesanan" }]}
-        />
-
-        {/* Search and Filter */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Cari Pesanan</CardTitle>
-            <CardDescription>
-              Cari pesanan berdasarkan ID, nama pelanggan, atau produk.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Cari pesanan..."
-                  className="pl-10"
-                />
-              </div>
-              <Button variant="outline">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </Button>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Kelola Pesanan</h1>
+          <div className="flex items-center space-x-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Cari pesanan..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 w-64"
+              />
             </div>
-          </CardContent>
-        </Card>
+            <Button variant="outline" size="icon">
+              <Filter className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
 
-        {/* Orders Tabs */}
-        <Tabs defaultValue="all" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+        {/* Status Tabs */}
+        <Tabs value={statusFilter} onValueChange={setStatusFilter} className="w-full">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="all">
-              Semua ({orderCounts.all})
+              Semua ({statusCounts.all})
             </TabsTrigger>
             <TabsTrigger value="pending">
-              Menunggu ({orderCounts.pending})
+              Pending ({statusCounts.pending})
             </TabsTrigger>
             <TabsTrigger value="processing">
-              Diproses ({orderCounts.processing})
+              Proses ({statusCounts.processing})
             </TabsTrigger>
             <TabsTrigger value="shipped">
-              Dikirim ({orderCounts.shipped})
+              Dikirim ({statusCounts.shipped})
             </TabsTrigger>
             <TabsTrigger value="delivered">
-              Selesai ({orderCounts.delivered})
+              Selesai ({statusCounts.delivered})
+            </TabsTrigger>
+            <TabsTrigger value="cancelled">
+              Batal ({statusCounts.cancelled})
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="all" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {ORDERS.map((order) => (
-                <OrderCard key={order.id} order={order} />
-              ))}
-            </div>
-          </TabsContent>
+          <TabsContent value={statusFilter} className="space-y-4">
+            {orders.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-16">
+                  <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Belum Ada Pesanan
+                  </h3>
+                  <p className="text-gray-600">
+                    Pesanan akan muncul di sini setelah pelanggan melakukan pembelian
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              orders.map((order) => {
+                const config = statusConfig[order.status as keyof typeof statusConfig];
+                const StatusIcon = config.icon;
+                
+                return (
+                  <Card key={order.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-4 mb-3">
+                            <h3 className="font-semibold text-lg">
+                              {order.orderNumber}
+                            </h3>
+                            <Badge className={config.color}>
+                              <StatusIcon className="h-3 w-3 mr-1" />
+                              {config.label}
+                            </Badge>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div className="space-y-2">
+                              <div className="flex items-center text-sm text-gray-600">
+                                <User className="h-4 w-4 mr-2" />
+                                <span>Pembeli: User Demo</span>
+                              </div>
+                              <div className="flex items-center text-sm text-gray-600">
+                                <Package className="h-4 w-4 mr-2" />
+                                <span>Produk: {order.productTitle}</span>
+                              </div>
+                              <div className="flex items-center text-sm text-gray-600">
+                                <Calendar className="h-4 w-4 mr-2" />
+                                <span>Tanggal: {formatDate(order.createdAt)}</span>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <div className="flex items-center text-sm text-gray-600">
+                                <MapPin className="h-4 w-4 mr-2" />
+                                <span className="truncate">{order.shippingAddress}</span>
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                <span>Jumlah: {order.quantity} kg</span>
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                <span>Pembayaran: {
+                                  order.paymentMethod === "bank_transfer" ? "Transfer Bank" :
+                                  order.paymentMethod === "e_wallet" ? "E-Wallet" :
+                                  "Kartu Kredit"
+                                }</span>
+                              </div>
+                            </div>
+                          </div>
 
-          <TabsContent value="pending" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filterOrdersByStatus(ORDERS, "pending").map((order) => (
-                <OrderCard key={order.id} order={order} />
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="processing" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filterOrdersByStatus(ORDERS, "processing").map((order) => (
-                <OrderCard key={order.id} order={order} />
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="shipped" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filterOrdersByStatus(ORDERS, "shipped").map((order) => (
-                <OrderCard key={order.id} order={order} />
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="delivered" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filterOrdersByStatus(ORDERS, "delivered").map((order) => (
-                <OrderCard key={order.id} order={order} />
-              ))}
-            </div>
+                          {order.notes && (
+                            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                              <p className="text-sm text-gray-600">
+                                <strong>Catatan:</strong> {order.notes}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="text-right ml-6">
+                          <div className="text-lg font-bold text-gray-900 mb-2">
+                            {formatCurrency(order.totalPrice)}
+                          </div>
+                          <div className="space-y-2">
+                            <Button variant="outline" size="sm" className="w-full">
+                              <Eye className="h-4 w-4 mr-2" />
+                              Detail
+                            </Button>
+                            {order.status === "pending" && (
+                              <Button size="sm" className="w-full">
+                                Konfirmasi
+                              </Button>
+                            )}
+                            {order.status === "processing" && (
+                              <Button size="sm" className="w-full">
+                                Kirim
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
           </TabsContent>
         </Tabs>
       </div>

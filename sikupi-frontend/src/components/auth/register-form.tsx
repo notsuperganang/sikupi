@@ -1,405 +1,339 @@
-// FILE PATH: /sikupi-frontend/src/components/auth/register-form.tsx
-
+// FILE: src/components/auth/register-form.tsx
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { registerSchema, type RegisterFormData } from "@/lib/validations";
-import { useAuthStore } from "@/stores/auth-store";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FormInput } from "@/components/forms/form-input";
-import { FormSelect } from "@/components/forms/form-select";
-import { FormCheckbox } from "@/components/forms/form-checkbox";
-import { toast } from "sonner";
-import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
-
-const USER_TYPE_OPTIONS = [
-  { value: "buyer", label: "Pembeli - Saya ingin membeli ampas kopi" },
-  { value: "seller", label: "Penjual - Saya ingin menjual ampas kopi" },
-];
-
-const BUSINESS_TYPE_OPTIONS = [
-  { value: "cafe", label: "Kafe" },
-  { value: "restaurant", label: "Restoran" },
-  { value: "hotel", label: "Hotel" },
-  { value: "roastery", label: "Roastery" },
-  { value: "other", label: "Lainnya" },
-];
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useRegister } from "@/lib/hooks/use-auth";
 
 export function RegisterForm() {
-  const router = useRouter();
-  const { register: registerUser, isLoading } = useAuthStore();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [termsAccepted, setTermsAccepted] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    watch,
-    trigger,
-    setValue,
-    formState: { errors },
-  } = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
-    mode: "onChange",
-    defaultValues: {
-      email: "",
-      password: "",
-      confirmPassword: "",
-      fullName: "",
-      phone: "",
-      userType: "" as any, // Initialize as empty string instead of undefined
-      address: "",
-      city: "",
-      province: "",
-      postalCode: "",
-      businessName: "",
-      businessType: "" as any, // Initialize as empty string instead of undefined
-      termsAccepted: false,
-    },
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+    fullName: "",
+    phone: "",
+    userType: "" as "seller" | "buyer",
+    address: "",
+    city: "",
+    province: "",
+    postalCode: "",
+    businessName: "",
+    businessType: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  const registerMutation = useRegister();
 
-  const watchedUserType = watch("userType");
-  const watchedFields = watch();
-
-  const totalSteps = 3;
-  const progress = (currentStep / totalSteps) * 100;
-
-  const validateStep = async (step: number) => {
-    const stepFields = getStepFields(step);
-    return await trigger(stepFields);
-  };
-
-  const getStepFields = (step: number): (keyof RegisterFormData)[] => {
-    switch (step) {
-      case 1:
-        return ["email", "password", "confirmPassword", "fullName"];
-      case 2:
-        return ["phone", "userType", "address", "city", "province", "postalCode"];
-      case 3:
-        return watchedUserType === "seller" 
-          ? ["businessName", "businessType", "termsAccepted"]
-          : ["termsAccepted"];
-      default:
-        return [];
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
     }
   };
 
-  const nextStep = async () => {
-    const isValid = await validateStep(currentStep);
-    if (isValid && currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
+  const handleSelectChange = (value: string) => {
+    setFormData(prev => ({ ...prev, userType: value as "seller" | "buyer" }));
+    if (errors.userType) {
+      setErrors(prev => ({ ...prev, userType: "" }));
     }
   };
 
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.email.trim()) {
+      newErrors.email = "Email wajib diisi";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Format email tidak valid";
     }
-  };
 
-  const onSubmit = async (data: RegisterFormData) => {
-    try {
-      console.log('Form data being submitted:', data); // Debug log
-      
-      // Prepare the registration data
-      const registrationData = {
-        email: data.email,
-        password: data.password,
-        fullName: data.fullName,
-        phone: data.phone,
-        userType: data.userType,
-        address: data.address || "",
-        city: data.city || "",
-        province: data.province || "",
-        postalCode: data.postalCode || "",
-      };
+    if (!formData.password.trim()) {
+      newErrors.password = "Password wajib diisi";
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Password minimal 6 karakter";
+    }
 
-      // Only add business fields for sellers
-      if (data.userType === "seller") {
-        Object.assign(registrationData, {
-          businessName: data.businessName || "",
-          businessType: data.businessType || "",
-        });
+    if (!formData.confirmPassword.trim()) {
+      newErrors.confirmPassword = "Konfirmasi password wajib diisi";
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Password tidak cocok";
+    }
+
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = "Nama lengkap wajib diisi";
+    }
+
+    if (!formData.phone.trim()) {
+      newErrors.phone = "Nomor telepon wajib diisi";
+    } else if (!/^[0-9+\-\s]+$/.test(formData.phone)) {
+      newErrors.phone = "Format nomor telepon tidak valid";
+    }
+
+    if (!formData.userType) {
+      newErrors.userType = "Jenis pengguna wajib dipilih";
+    }
+
+    if (formData.userType === "seller") {
+      if (!formData.businessName.trim()) {
+        newErrors.businessName = "Nama bisnis wajib diisi untuk penjual";
       }
-
-      console.log('Registration data prepared:', registrationData); // Debug log
-      
-      await registerUser(registrationData);
-      
-      toast.success("Registrasi berhasil!", {
-        description: "Selamat datang di Sikupi! Akun Anda telah dibuat.",
-      });
-
-      router.push("/dashboard");
-      
-    } catch (error) {
-      console.error('Registration form error:', error); // Debug log
-      
-      toast.error("Registrasi gagal", {
-        description: error instanceof Error ? error.message : "Terjadi kesalahan saat mendaftar",
-      });
     }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const renderStep = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <div className="space-y-4">
-            <div className="text-center mb-6">
-              <h3 className="text-lg font-semibold">Informasi Akun</h3>
-              <p className="text-sm text-muted-foreground">
-                Masukkan email dan password untuk akun baru Anda
-              </p>
-            </div>
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
 
-            <FormInput
-              label="Nama Lengkap"
-              placeholder="Masukkan nama lengkap"
-              required
-              error={errors.fullName?.message}
-              {...register("fullName")}
-            />
-
-            <FormInput
-              label="Email"
-              type="email"
-              placeholder="nama@email.com"
-              required
-              error={errors.email?.message}
-              {...register("email")}
-            />
-
-            <FormInput
-              label="Password"
-              type="password"
-              placeholder="Buat password yang kuat"
-              required
-              showPasswordToggle
-              description="Minimal 6 karakter dengan huruf besar, huruf kecil, dan angka"
-              error={errors.password?.message}
-              {...register("password")}
-            />
-
-            <FormInput
-              label="Konfirmasi Password"
-              type="password"
-              placeholder="Ulangi password"
-              required
-              showPasswordToggle
-              error={errors.confirmPassword?.message}
-              {...register("confirmPassword")}
-            />
-          </div>
-        );
-
-      case 2:
-        return (
-          <div className="space-y-4">
-            <div className="text-center mb-6">
-              <h3 className="text-lg font-semibold">Informasi Profil</h3>
-              <p className="text-sm text-muted-foreground">
-                Lengkapi profil Anda untuk pengalaman yang lebih baik
-              </p>
-            </div>
-
-            <FormInput
-              label="Nomor Telepon"
-              type="tel"
-              placeholder="08123456789"
-              required
-              error={errors.phone?.message}
-              {...register("phone")}
-            />
-
-            <FormSelect
-              label="Jenis Akun"
-              placeholder="Pilih jenis akun"
-              required
-              options={USER_TYPE_OPTIONS}
-              value={watchedFields.userType || ""}
-              onValueChange={(value) => {
-                setValue("userType", value as "seller" | "buyer", { shouldValidate: true });
-              }}
-              error={errors.userType?.message}
-            />
-
-            <FormInput
-              label="Alamat Lengkap"
-              placeholder="Jl. Contoh No. 123"
-              required
-              error={errors.address?.message}
-              {...register("address")}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormInput
-                label="Kota"
-                placeholder="Jakarta"
-                required
-                error={errors.city?.message}
-                {...register("city")}
-              />
-
-              <FormInput
-                label="Provinsi"
-                placeholder="DKI Jakarta"
-                required
-                error={errors.province?.message}
-                {...register("province")}
-              />
-            </div>
-
-            <FormInput
-              label="Kode Pos"
-              placeholder="12345"
-              required
-              error={errors.postalCode?.message}
-              {...register("postalCode")}
-            />
-          </div>
-        );
-
-      case 3:
-        return (
-          <div className="space-y-4">
-            <div className="text-center mb-6">
-              <h3 className="text-lg font-semibold">
-                {watchedUserType === "seller" ? "Informasi Bisnis" : "Konfirmasi"}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {watchedUserType === "seller" 
-                  ? "Lengkapi informasi bisnis Anda" 
-                  : "Konfirmasi pendaftaran Anda"
-                }
-              </p>
-            </div>
-
-            {watchedUserType === "seller" && (
-              <>
-                <FormInput
-                  label="Nama Bisnis"
-                  placeholder="Nama kafe, toko, atau bisnis Anda"
-                  required
-                  error={errors.businessName?.message}
-                  {...register("businessName")}
-                />
-
-                <FormSelect
-                  label="Jenis Bisnis"
-                  placeholder="Pilih jenis bisnis"
-                  required
-                  options={BUSINESS_TYPE_OPTIONS}
-                  value={watchedFields.businessType || ""}
-                  onValueChange={(value) => {
-                    setValue("businessType", value, { shouldValidate: true });
-                  }}
-                  error={errors.businessType?.message}
-                />
-              </>
-            )}
-
-            <FormCheckbox
-              label="Syarat dan Ketentuan"
-              description={
-                <span>
-                  Saya menyetujui{" "}
-                  <Link href="/syarat" className="text-primary hover:underline">
-                    Syarat dan Ketentuan
-                  </Link>{" "}
-                  serta{" "}
-                  <Link href="/privasi" className="text-primary hover:underline">
-                    Kebijakan Privasi
-                  </Link>{" "}
-                  Sikupi
-                </span>
-              }
-              required
-              checked={watchedFields.termsAccepted || false}
-              onCheckedChange={(checked) => {
-                setValue("termsAccepted", checked, { shouldValidate: true });
-              }}
-              error={errors.termsAccepted?.message}
-            />
-          </div>
-        );
-
-      default:
-        return null;
+    try {
+      const { confirmPassword, ...registerData } = formData;
+      await registerMutation.mutateAsync(registerData);
+    } catch (error) {
+      // Error handling is done in the mutation
     }
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      {/* Progress indicator */}
-      <div className="mb-8">
-        <div className="flex justify-between text-sm text-muted-foreground mb-2">
-          <span>Step {currentStep} of {totalSteps}</span>
-          <span>{Math.round(progress)}%</span>
-        </div>
-        <Progress value={progress} className="h-2" />
-      </div>
+    <Card className="w-full max-w-md">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold text-center">
+          Daftar ke Sikupi
+        </CardTitle>
+        <CardDescription className="text-center">
+          Buat akun baru untuk bergabung dengan marketplace ampas kopi
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* User Type */}
+          <div className="space-y-2">
+            <Label htmlFor="userType">Jenis Pengguna</Label>
+            <Select value={formData.userType} onValueChange={handleSelectChange}>
+              <SelectTrigger className={errors.userType ? "border-red-500" : ""}>
+                <SelectValue placeholder="Pilih jenis pengguna" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="buyer">Pembeli</SelectItem>
+                <SelectItem value="seller">Penjual</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.userType && (
+              <p className="text-sm text-red-500">{errors.userType}</p>
+            )}
+          </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {renderStep()}
+          {/* Full Name */}
+          <div className="space-y-2">
+            <Label htmlFor="fullName">Nama Lengkap</Label>
+            <Input
+              id="fullName"
+              name="fullName"
+              type="text"
+              placeholder="Masukkan nama lengkap"
+              value={formData.fullName}
+              onChange={handleChange}
+              disabled={registerMutation.isPending}
+              className={errors.fullName ? "border-red-500" : ""}
+            />
+            {errors.fullName && (
+              <p className="text-sm text-red-500">{errors.fullName}</p>
+            )}
+          </div>
 
-        {/* Navigation buttons */}
-        <div className="flex justify-between pt-6">
-          {currentStep > 1 ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={prevStep}
-              disabled={isLoading}
-            >
-              <ChevronLeft className="w-4 h-4 mr-2" />
-              Sebelumnya
-            </Button>
-          ) : (
-            <div />
-          )}
+          {/* Email */}
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="nama@email.com"
+              value={formData.email}
+              onChange={handleChange}
+              disabled={registerMutation.isPending}
+              className={errors.email ? "border-red-500" : ""}
+            />
+            {errors.email && (
+              <p className="text-sm text-red-500">{errors.email}</p>
+            )}
+          </div>
 
-          {currentStep < totalSteps ? (
-            <Button
-              type="button"
-              onClick={nextStep}
-              disabled={isLoading}
-            >
-              Selanjutnya
-              <ChevronRight className="w-4 h-4 ml-2" />
-            </Button>
-          ) : (
-            <Button
-              type="submit"
-              disabled={isLoading || !watchedFields.termsAccepted}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Mendaftar...
-                </>
-              ) : (
-                "Buat Akun"
+          {/* Phone */}
+          <div className="space-y-2">
+            <Label htmlFor="phone">Nomor Telepon</Label>
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              placeholder="08123456789"
+              value={formData.phone}
+              onChange={handleChange}
+              disabled={registerMutation.isPending}
+              className={errors.phone ? "border-red-500" : ""}
+            />
+            {errors.phone && (
+              <p className="text-sm text-red-500">{errors.phone}</p>
+            )}
+          </div>
+
+          {/* Password */}
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
+              <Input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Masukkan password"
+                value={formData.password}
+                onChange={handleChange}
+                disabled={registerMutation.isPending}
+                className={errors.password ? "border-red-500" : ""}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={registerMutation.isPending}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4 text-gray-400" />
+                ) : (
+                  <Eye className="h-4 w-4 text-gray-400" />
+                )}
+              </Button>
+            </div>
+            {errors.password && (
+              <p className="text-sm text-red-500">{errors.password}</p>
+            )}
+          </div>
+
+          {/* Confirm Password */}
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Konfirmasi password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                disabled={registerMutation.isPending}
+                className={errors.confirmPassword ? "border-red-500" : ""}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                disabled={registerMutation.isPending}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-4 w-4 text-gray-400" />
+                ) : (
+                  <Eye className="h-4 w-4 text-gray-400" />
+                )}
+              </Button>
+            </div>
+            {errors.confirmPassword && (
+              <p className="text-sm text-red-500">{errors.confirmPassword}</p>
+            )}
+          </div>
+
+          {/* Business Name (for sellers) */}
+          {formData.userType === "seller" && (
+            <div className="space-y-2">
+              <Label htmlFor="businessName">Nama Bisnis</Label>
+              <Input
+                id="businessName"
+                name="businessName"
+                type="text"
+                placeholder="Masukkan nama bisnis"
+                value={formData.businessName}
+                onChange={handleChange}
+                disabled={registerMutation.isPending}
+                className={errors.businessName ? "border-red-500" : ""}
+              />
+              {errors.businessName && (
+                <p className="text-sm text-red-500">{errors.businessName}</p>
               )}
-            </Button>
+            </div>
           )}
-        </div>
-      </form>
 
-      {/* Login link */}
-      <div className="text-center mt-6">
-        <p className="text-sm text-muted-foreground">
-          Sudah punya akun?{" "}
-          <Link href="/masuk" className="text-primary font-medium hover:underline">
-            Masuk di sini
+          {/* Address (optional) */}
+          <div className="space-y-2">
+            <Label htmlFor="address">Alamat (Opsional)</Label>
+            <Input
+              id="address"
+              name="address"
+              type="text"
+              placeholder="Masukkan alamat"
+              value={formData.address}
+              onChange={handleChange}
+              disabled={registerMutation.isPending}
+            />
+          </div>
+
+          {/* City (optional) */}
+          <div className="space-y-2">
+            <Label htmlFor="city">Kota (Opsional)</Label>
+            <Input
+              id="city"
+              name="city"
+              type="text"
+              placeholder="Masukkan kota"
+              value={formData.city}
+              onChange={handleChange}
+              disabled={registerMutation.isPending}
+            />
+          </div>
+
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={registerMutation.isPending}
+          >
+            {registerMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Memproses...
+              </>
+            ) : (
+              "Daftar"
+            )}
+          </Button>
+        </form>
+
+        <div className="text-center text-sm">
+          <span className="text-gray-600">Sudah punya akun? </span>
+          <Link 
+            href="/masuk" 
+            className="text-green-600 hover:text-green-700 font-medium"
+          >
+            Masuk sekarang
           </Link>
-        </p>
-      </div>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

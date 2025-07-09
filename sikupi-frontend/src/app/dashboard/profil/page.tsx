@@ -1,334 +1,355 @@
-import { Metadata } from "next";
+// FILE: src/app/dashboard/profil/page.tsx
+"use client";
+
+import { useState } from "react";
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
-import { DashboardHeader } from "@/components/dashboard/dashboard-header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FormInput } from "@/components/forms/form-input";
-import { FormTextarea } from "@/components/forms/form-textarea";
-import { FormSelect } from "@/components/forms/form-select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   User, 
   Mail, 
   Phone, 
   MapPin, 
-  Store,
+  Building, 
   Shield,
+  Star,
+  Edit,
   Camera,
   Save
 } from "lucide-react";
-
-export const metadata: Metadata = {
-  title: "Profil - Dashboard Sikupi",
-  description: "Kelola informasi profil dan pengaturan akun Anda.",
-};
-
-// Mock data - replace with actual API calls
-const USER_DATA = {
-  id: "usr-001",
-  name: "John Doe",
-  email: "john.doe@email.com",
-  phone: "+62 812-3456-7890",
-  avatar: null,
-  bio: "Penjual ampas kopi berkualitas dari Jakarta. Sudah berpengalaman 3 tahun dalam industri coffee waste.",
-  address: {
-    street: "Jl. Merdeka No. 123",
-    city: "Jakarta",
-    province: "DKI Jakarta",
-    postalCode: "10110",
-  },
-  business: {
-    name: "Kopi Nusantara",
-    type: "Cafe & Restaurant",
-    description: "Cafe dengan konsep eco-friendly yang mengolah ampas kopi menjadi produk bernilai.",
-    established: "2021",
-  },
-  verification: {
-    email: true,
-    phone: true,
-    identity: false,
-    business: true,
-  },
-  stats: {
-    totalSales: "Rp 12.450.000",
-    totalOrders: 156,
-    rating: 4.8,
-    reviewCount: 89,
-  },
-  joinDate: "2023-05-15",
-};
-
-const BUSINESS_TYPES = [
-  { value: "cafe", label: "Cafe & Restaurant" },
-  { value: "hotel", label: "Hotel" },
-  { value: "factory", label: "Coffee Factory" },
-  { value: "individual", label: "Individual" },
-  { value: "other", label: "Lainnya" },
-];
-
-const PROVINCES = [
-  { value: "jakarta", label: "DKI Jakarta" },
-  { value: "jabar", label: "Jawa Barat" },
-  { value: "jateng", label: "Jawa Tengah" },
-  { value: "jatim", label: "Jawa Timur" },
-  { value: "bali", label: "Bali" },
-];
-
-function VerificationBadge({ verified, label }: { verified: boolean; label: string }) {
-  return (
-    <Badge variant={verified ? "default" : "secondary"} className="text-xs">
-      {verified ? "✓" : "○"} {label}
-    </Badge>
-  );
-}
+import { useAuthStore } from "@/stores/auth-store";
+import { useUpdateProfile } from "@/lib/hooks/use-auth";
 
 export default function ProfilePage() {
+  const { user } = useAuthStore();
+  const updateProfile = useUpdateProfile();
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [profileData, setProfileData] = useState({
+    fullName: user?.fullName || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    address: user?.address || "",
+    city: user?.city || "",
+    province: user?.province || "",
+    postalCode: user?.postalCode || "",
+    businessName: user?.businessName || "",
+    businessType: user?.businessType || "",
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setProfileData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSave = async () => {
+    try {
+      await updateProfile.mutateAsync(profileData);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Profile update error:', error);
+    }
+  };
+
+  const handleCancel = () => {
+    setProfileData({
+      fullName: user?.fullName || "",
+      email: user?.email || "",
+      phone: user?.phone || "",
+      address: user?.address || "",
+      city: user?.city || "",
+      province: user?.province || "",
+      postalCode: user?.postalCode || "",
+      businessName: user?.businessName || "",
+      businessType: user?.businessType || "",
+    });
+    setIsEditing(false);
+  };
+
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        {/* Header */}
-        <DashboardHeader
-          title="Profil"
-          description="Kelola informasi profil dan pengaturan akun Anda."
-          breadcrumbs={[{ label: "Profil" }]}
-        />
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Profil</h1>
+          <Button
+            variant={isEditing ? "outline" : "default"}
+            onClick={() => setIsEditing(!isEditing)}
+          >
+            {isEditing ? (
+              <>
+                <Edit className="h-4 w-4 mr-2" />
+                Batal
+              </>
+            ) : (
+              <>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Profil
+              </>
+            )}
+          </Button>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Profile Summary */}
-          <div className="lg:col-span-1">
+        <Tabs defaultValue="profile" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="profile">Profil</TabsTrigger>
+            <TabsTrigger value="business">Bisnis</TabsTrigger>
+            <TabsTrigger value="security">Keamanan</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="profile" className="space-y-6">
             <Card>
-              <CardHeader className="text-center">
-                <div className="relative mx-auto w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                  <User className="h-12 w-12 text-primary" />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
-                  >
-                    <Camera className="h-4 w-4" />
+              <CardHeader>
+                <CardTitle>Informasi Profil</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Avatar Section */}
+                <div className="flex items-center space-x-4">
+                  <div className="relative">
+                    <Avatar className="h-20 w-20">
+                      <AvatarImage src={user?.avatarUrl} />
+                      <AvatarFallback className="text-lg">
+                        {user?.fullName?.charAt(0)?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    {isEditing && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full"
+                      >
+                        <Camera className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-semibold">{user?.fullName}</h3>
+                    <p className="text-sm text-gray-600">{user?.email}</p>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant={user?.isVerified ? "default" : "secondary"}>
+                        {user?.isVerified ? (
+                          <>
+                            <Shield className="h-3 w-3 mr-1" />
+                            Terverifikasi
+                          </>
+                        ) : (
+                          "Belum Terverifikasi"
+                        )}
+                      </Badge>
+                      <Badge variant="outline">
+                        {user?.userType === "seller" ? "Penjual" : "Pembeli"}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Profile Form */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="fullName">Nama Lengkap</Label>
+                      <Input
+                        id="fullName"
+                        name="fullName"
+                        value={profileData.fullName}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={profileData.email}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="phone">Nomor Telepon</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        value={profileData.phone}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="address">Alamat</Label>
+                      <Textarea
+                        id="address"
+                        name="address"
+                        value={profileData.address}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        rows={3}
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="city">Kota</Label>
+                        <Input
+                          id="city"
+                          name="city"
+                          value={profileData.city}
+                          onChange={handleInputChange}
+                          disabled={!isEditing}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="province">Provinsi</Label>
+                        <Input
+                          id="province"
+                          name="province"
+                          value={profileData.province}
+                          onChange={handleInputChange}
+                          disabled={!isEditing}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="postalCode">Kode Pos</Label>
+                      <Input
+                        id="postalCode"
+                        name="postalCode"
+                        value={profileData.postalCode}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {isEditing && (
+                  <div className="flex space-x-2">
+                    <Button onClick={handleSave} disabled={updateProfile.isPending}>
+                      {updateProfile.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Menyimpan...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          Simpan
+                        </>
+                      )}
+                    </Button>
+                    <Button variant="outline" onClick={handleCancel}>
+                      Batal
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="business" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Informasi Bisnis</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="businessName">Nama Bisnis</Label>
+                    <Input
+                      id="businessName"
+                      name="businessName"
+                      value={profileData.businessName}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="businessType">Jenis Bisnis</Label>
+                    <Input
+                      id="businessType"
+                      name="businessType"
+                      value={profileData.businessType}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+
+                {user?.userType === "seller" && (
+                  <div className="space-y-4">
+                    <Separator />
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-2">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        <span className="font-medium">{user.rating || 0}</span>
+                        <span className="text-gray-500">({user.totalReviews || 0} ulasan)</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="security" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Keamanan Akun</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">Ubah Password</h4>
+                    <p className="text-sm text-gray-600">Perbarui password untuk keamanan akun</p>
+                  </div>
+                  <Button variant="outline">
+                    Ubah Password
                   </Button>
                 </div>
-                <CardTitle>{USER_DATA.name}</CardTitle>
-                <CardDescription>{USER_DATA.email}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground mb-2">Member sejak</p>
-                  <p className="font-medium">{USER_DATA.joinDate}</p>
-                </div>
                 
-                <Separator />
-                
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Status Verifikasi</p>
-                  <div className="flex flex-wrap gap-2">
-                    <VerificationBadge verified={USER_DATA.verification.email} label="Email" />
-                    <VerificationBadge verified={USER_DATA.verification.phone} label="Phone" />
-                    <VerificationBadge verified={USER_DATA.verification.identity} label="KTP" />
-                    <VerificationBadge verified={USER_DATA.verification.business} label="Bisnis" />
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">Verifikasi Email</h4>
+                    <p className="text-sm text-gray-600">
+                      {user?.emailVerified ? "Email sudah terverifikasi" : "Verifikasi email Anda"}
+                    </p>
                   </div>
+                  <Button variant="outline" disabled={user?.emailVerified}>
+                    {user?.emailVerified ? "Terverifikasi" : "Verifikasi"}
+                  </Button>
                 </div>
                 
-                <Separator />
-                
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Statistik</p>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Penjualan</p>
-                      <p className="font-medium">{USER_DATA.stats.totalSales}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Pesanan</p>
-                      <p className="font-medium">{USER_DATA.stats.totalOrders}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Rating</p>
-                      <p className="font-medium">{USER_DATA.stats.rating}/5</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Review</p>
-                      <p className="font-medium">{USER_DATA.stats.reviewCount}</p>
-                    </div>
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">Verifikasi Nomor Telepon</h4>
+                    <p className="text-sm text-gray-600">
+                      {user?.phoneVerified ? "Nomor telepon sudah terverifikasi" : "Verifikasi nomor telepon Anda"}
+                    </p>
                   </div>
+                  <Button variant="outline" disabled={user?.phoneVerified}>
+                    {user?.phoneVerified ? "Terverifikasi" : "Verifikasi"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
-          </div>
-
-          {/* Profile Forms */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Personal Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Informasi Pribadi
-                </CardTitle>
-                <CardDescription>
-                  Update informasi pribadi Anda
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormInput
-                    label="Nama Lengkap"
-                    defaultValue={USER_DATA.name}
-                    required
-                  />
-                  <FormInput
-                    label="Email"
-                    type="email"
-                    defaultValue={USER_DATA.email}
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormInput
-                    label="Nomor Telepon"
-                    type="tel"
-                    defaultValue={USER_DATA.phone}
-                    required
-                  />
-                  <FormSelect
-                    label="Provinsi"
-                    options={PROVINCES}
-                    value="jakarta"
-                    required
-                  />
-                </div>
-                <FormTextarea
-                  label="Bio"
-                  placeholder="Ceritakan tentang diri Anda..."
-                  defaultValue={USER_DATA.bio}
-                  rows={3}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Address Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  Informasi Alamat
-                </CardTitle>
-                <CardDescription>
-                  Update alamat untuk pengiriman dan identitas
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormTextarea
-                  label="Alamat Lengkap"
-                  placeholder="Masukkan alamat lengkap..."
-                  defaultValue={USER_DATA.address.street}
-                  required
-                  rows={3}
-                />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormInput
-                    label="Kota"
-                    defaultValue={USER_DATA.address.city}
-                    required
-                  />
-                  <FormSelect
-                    label="Provinsi"
-                    options={PROVINCES}
-                    value="jakarta"
-                    required
-                  />
-                  <FormInput
-                    label="Kode Pos"
-                    defaultValue={USER_DATA.address.postalCode}
-                    required
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Business Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Store className="h-5 w-5" />
-                  Informasi Bisnis
-                </CardTitle>
-                <CardDescription>
-                  Informasi tentang bisnis atau usaha Anda
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormInput
-                    label="Nama Bisnis"
-                    defaultValue={USER_DATA.business.name}
-                    required
-                  />
-                  <FormSelect
-                    label="Jenis Bisnis"
-                    options={BUSINESS_TYPES}
-                    value="cafe"
-                    required
-                  />
-                </div>
-                <FormTextarea
-                  label="Deskripsi Bisnis"
-                  placeholder="Ceritakan tentang bisnis Anda..."
-                  defaultValue={USER_DATA.business.description}
-                  rows={3}
-                />
-                <FormInput
-                  label="Tahun Didirikan"
-                  type="number"
-                  defaultValue={USER_DATA.business.established}
-                  min="1900"
-                  max="2024"
-                />
-              </CardContent>
-            </Card>
-
-            {/* Security */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Keamanan
-                </CardTitle>
-                <CardDescription>
-                  Kelola password dan keamanan akun
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormInput
-                  label="Password Saat Ini"
-                  type="password"
-                  placeholder="Masukkan password saat ini"
-                />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormInput
-                    label="Password Baru"
-                    type="password"
-                    placeholder="Masukkan password baru"
-                  />
-                  <FormInput
-                    label="Konfirmasi Password"
-                    type="password"
-                    placeholder="Konfirmasi password baru"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Save Button */}
-            <div className="flex justify-end">
-              <Button size="lg">
-                <Save className="h-4 w-4 mr-2" />
-                Simpan Perubahan
-              </Button>
-            </div>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );

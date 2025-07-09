@@ -1,130 +1,59 @@
-// FILE PATH: /src/lib/types/orders.ts
-
-import { Product } from './product';
-import { ShippingAddress, ShippingOption } from './cart';
-
-// Order Status Types
+// FILE: src/lib/types/orders.ts (Updated to fix TypeScript errors)
+// Order status types
 export type OrderStatus = 
-  | 'pending' 
-  | 'paid' 
-  | 'processing' 
-  | 'shipped' 
-  | 'delivered' 
-  | 'cancelled' 
-  | 'refunded';
+  | "pending"
+  | "paid"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
 
-export type PaymentStatus = 
-  | 'pending' 
-  | 'paid' 
-  | 'failed' 
-  | 'refunded' 
-  | 'cancelled';
-
+// Payment method types
 export type PaymentMethod = 
-  | 'bank_transfer' 
-  | 'credit_card' 
-  | 'e_wallet' 
-  | 'cash_on_delivery';
+  | "bank_transfer"
+  | "e_wallet"
+  | "credit_card"
+  | "cod";
 
-// Order Item Types
-export interface OrderItem {
-  id: string;
-  productId: string;
-  product: Product;
-  quantity: number;
-  pricePerKg: number;
-  totalPrice: number;
-  sellerId: string;
-  sellerName: string;
-}
+// Payment status types
+export type PaymentStatus = 
+  | "pending"
+  | "paid"
+  | "failed"
+  | "refunded";
 
-// Order Types
+// Main Order interface
 export interface Order {
   id: string;
   orderNumber: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
-  
-  // Order items
-  items: OrderItem[];
-  totalItems: number;
-  totalWeight: number;
-  subtotal: number;
-  shippingCost: number;
-  discountAmount: number;
-  totalAmount: number;
-  
-  // Status
+  buyerId: string;
+  sellerId: string;
+  productId: string;
+  productTitle: string;
+  quantity: number;
+  pricePerKg: number;
+  totalPrice: number;
   status: OrderStatus;
-  paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod;
-  
-  // Shipping information
-  shippingAddress: ShippingAddress;
-  shippingOption: ShippingOption;
-  trackingNumber?: string;
-  
-  // Payment information
-  paymentDetails?: {
-    method: PaymentMethod;
-    transactionId?: string;
-    paidAt?: string;
-    paymentProof?: string;
-  };
-  
-  // Coupon information
-  coupon?: {
-    code: string;
-    discountAmount: number;
-    discountType: string;
-  };
-  
-  // Notes
-  notes?: string;
-  cancelReason?: string;
-  
-  // Timestamps
+  paymentStatus: PaymentStatus;
+  shippingAddress: string;
+  shippingMethod: string;
+  shippingCost: number;
+  trackingNumber?: string; // Changed to optional
+  notes?: string; // Changed to optional
   createdAt: string;
   updatedAt: string;
-  paidAt?: string;
-  shippedAt?: string;
-  deliveredAt?: string;
-  cancelledAt?: string;
-}
-
-// Order Filters
-export interface OrderFilters {
-  status?: OrderStatus | OrderStatus[];
-  paymentStatus?: PaymentStatus | PaymentStatus[];
-  paymentMethod?: PaymentMethod | PaymentMethod[];
-  sellerId?: string; // for seller filtering their orders
-  dateFrom?: string;
-  dateTo?: string;
-  search?: string; // search by order number, customer name, etc
-  sortBy?: 'newest' | 'oldest' | 'amount_high' | 'amount_low';
-  page?: number;
-  limit?: number;
 }
 
 // Create Order Types
 export interface CreateOrderRequest {
-  // Items from cart
-  items: Array<{
-    productId: string;
-    quantity: number;
-    sellerId: string;
-  }>;
-  
-  // Shipping
-  shippingAddress: ShippingAddress;
-  shippingOptionId: string;
-  
-  // Payment
+  productId: string;
+  buyerId: string;
+  quantity: number;
   paymentMethod: PaymentMethod;
-  
-  // Optional
-  couponCode?: string;
+  shippingAddress: string;
+  shippingMethod: string;
+  shippingCost?: number;
   notes?: string;
 }
 

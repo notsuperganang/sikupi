@@ -1,106 +1,74 @@
+// FILE: src/lib/auth/hooks.ts
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
 
-// Hook for requiring authentication
-export function useRequireAuth(redirectTo: string = "/masuk") {
-  const { isAuthenticated, isLoading } = useAuthStore();
-  const router = useRouter();
+// Hook to initialize auth state
+export function useAuthInitialize() {
+  const { initialize, isInitialized } = useAuthStore();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace(redirectTo);
+    if (!isInitialized) {
+      initialize();
     }
-  }, [isAuthenticated, isLoading, router, redirectTo]);
+  }, [initialize, isInitialized]);
 
-  return { isAuthenticated, isLoading };
+  return { isInitialized };
 }
 
-// Hook for redirecting authenticated users
-export function useRedirectIfAuthenticated(redirectTo: string = "/dashboard") {
-  const { isAuthenticated, isLoading } = useAuthStore();
-  const router = useRouter();
+// Hook to get auth state
+export function useAuth() {
+  const {
+    user,
+    token,
+    isAuthenticated,
+    isLoading,
+    isInitialized,
+  } = useAuthStore();
 
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      router.replace(redirectTo);
-    }
-  }, [isAuthenticated, isLoading, router, redirectTo]);
-
-  return { isAuthenticated, isLoading };
-}
-
-// Hook for role-based access
-export function useRequireRole(
-  requiredRole: "seller" | "buyer" | "admin",
-  redirectTo: string = "/dashboard"
-) {
-  const { user, isAuthenticated, isLoading } = useAuthStore();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated) {
-        router.replace("/masuk");
-      } else if (user && user.userType !== requiredRole) {
-        router.replace(redirectTo);
-      }
-    }
-  }, [isAuthenticated, isLoading, user, requiredRole, router, redirectTo]);
-
-  return { 
-    isAuthenticated, 
-    isLoading, 
-    hasAccess: user?.userType === requiredRole 
+  return {
+    user,
+    token,
+    isAuthenticated,
+    isLoading,
+    isInitialized,
+    isChecking: isLoading,
   };
 }
 
-// Hook for checking if user can access a resource
-export function useCanAccess() {
+// Hook to check if user has specific role
+export function useRole(requiredRole?: "seller" | "buyer" | "admin") {
+  const { user, isAuthenticated } = useAuthStore();
+
+  if (!isAuthenticated || !user) {
+    return false;
+  }
+
+  if (!requiredRole) {
+    return true;
+  }
+
+  return user.userType === requiredRole;
+}
+
+// Hook to check permissions
+export function usePermissions() {
   const { user, isAuthenticated } = useAuthStore();
 
   return {
-    canAccess: (requiredRole?: "seller" | "buyer" | "admin") => {
-      if (!requiredRole) return isAuthenticated;
-      return isAuthenticated && user?.userType === requiredRole;
-    },
+    isAuthenticated,
+    user,
     isSeller: user?.userType === "seller",
     isBuyer: user?.userType === "buyer",
     isAdmin: user?.userType === "admin",
+    isVerified: user?.isVerified || false,
+    isEmailVerified: user?.emailVerified || false,
+    hasRole: (role: "seller" | "buyer" | "admin") => user?.userType === role,
+    canAccess: (requiredRole?: "seller" | "buyer" | "admin") => {
+      if (!isAuthenticated || !user) return false;
+      if (!requiredRole) return true;
+      return user.userType === requiredRole;
+    },
   };
-}
-
-// Hook for auto-logout on token expiry
-export function useAutoLogout() {
-  const { logout, token } = useAuthStore();
-
-  useEffect(() => {
-    if (!token) return;
-
-    try {
-      // Decode JWT to get expiry time
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const expiry = payload.exp * 1000; // Convert to milliseconds
-      const now = Date.now();
-      
-      if (expiry <= now) {
-        // Token is already expired
-        logout();
-        return;
-      }
-
-      // Set timeout to logout when token expires
-      const timeoutId = setTimeout(() => {
-        logout();
-      }, expiry - now);
-
-      return () => clearTimeout(timeoutId);
-    } catch (error) {
-      // If token parsing fails, logout
-      console.error("Error parsing token:", error);
-      logout();
-    }
-  }, [token, logout]);
 }
