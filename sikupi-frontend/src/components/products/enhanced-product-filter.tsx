@@ -1,4 +1,3 @@
-// FILE: src/components/products/enhanced-product-filter.tsx
 "use client";
 
 import { useState } from "react";
@@ -7,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { 
   Select, 
@@ -16,7 +14,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { X, Filter } from "lucide-react";
+import { X } from "lucide-react";
 import type { ProductFilters } from "@/lib/types/product";
 
 interface EnhancedProductFilterProps {
@@ -97,21 +95,19 @@ export function EnhancedProductFilter({
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Clear All Button */}
       <div className="flex items-center justify-between">
         <h3 className="font-medium">Filter Produk</h3>
         <Button
           variant="ghost"
           size="sm"
           onClick={clearAllFilters}
-          className="text-gray-500 hover:text-gray-700"
+          className="text-muted-foreground hover:text-foreground"
         >
           <X className="h-4 w-4 mr-1" />
           Reset
         </Button>
       </div>
 
-      {/* Waste Type Filter */}
       <div className="space-y-3">
         <Label className="text-sm font-medium">Jenis Limbah</Label>
         <div className="space-y-2">
@@ -124,7 +120,7 @@ export function EnhancedProductFilter({
                   handleFilterUpdate("wasteType", checked ? type.value : "");
                 }}
               />
-              <Label htmlFor={type.value} className="text-sm cursor-pointer">
+              <Label htmlFor={type.value} className="text-sm font-normal cursor-pointer">
                 {type.label}
               </Label>
             </div>
@@ -134,7 +130,6 @@ export function EnhancedProductFilter({
 
       <Separator />
 
-      {/* Category Filter */}
       <div className="space-y-3">
         <Label className="text-sm font-medium">Kategori</Label>
         <Select
@@ -142,10 +137,10 @@ export function EnhancedProductFilter({
           onValueChange={(value) => handleFilterUpdate("category", value)}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Pilih kategori" />
+            <SelectValue placeholder="Semua Kategori" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Semua Kategori</SelectItem>
+            {/* DIHAPUS: <SelectItem value="">Semua Kategori</SelectItem> */}
             {categoryOptions.map((category) => (
               <SelectItem key={category.value} value={category.value}>
                 {category.label}
@@ -157,7 +152,6 @@ export function EnhancedProductFilter({
 
       <Separator />
 
-      {/* Price Range Filter */}
       <div className="space-y-3">
         <Label className="text-sm font-medium">Rentang Harga (per kg)</Label>
         <div className="space-y-4">
@@ -178,9 +172,9 @@ export function EnhancedProductFilter({
                 ...prev, 
                 minPrice: Number(e.target.value) 
               }))}
-              className="w-20 text-xs"
+              className="w-24 text-sm"
             />
-            <span className="text-xs text-gray-500">-</span>
+            <span className="text-sm text-muted-foreground">-</span>
             <Input
               type="number"
               placeholder="Max"
@@ -189,10 +183,10 @@ export function EnhancedProductFilter({
                 ...prev, 
                 maxPrice: Number(e.target.value) 
               }))}
-              className="w-20 text-xs"
+              className="w-24 text-sm"
             />
             <Button size="sm" onClick={applyPriceFilter}>
-              Terapkan
+              OK
             </Button>
           </div>
         </div>
@@ -200,7 +194,6 @@ export function EnhancedProductFilter({
 
       <Separator />
 
-      {/* Grade Filter */}
       <div className="space-y-3">
         <Label className="text-sm font-medium">Grade</Label>
         <Select
@@ -208,10 +201,10 @@ export function EnhancedProductFilter({
           onValueChange={(value) => handleFilterUpdate("grade", value)}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Pilih grade" />
+            <SelectValue placeholder="Semua Grade" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Semua Grade</SelectItem>
+            {/* DIHAPUS: <SelectItem value="">Semua Grade</SelectItem> */}
             {grades.map((grade) => (
               <SelectItem key={grade.value} value={grade.value}>
                 {grade.label}
@@ -223,7 +216,6 @@ export function EnhancedProductFilter({
 
       <Separator />
 
-      {/* Location Filter */}
       <div className="space-y-3">
         <Label className="text-sm font-medium">Lokasi</Label>
         <Select
@@ -231,10 +223,10 @@ export function EnhancedProductFilter({
           onValueChange={(value) => handleFilterUpdate("location", value)}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Pilih provinsi" />
+            <SelectValue placeholder="Semua Lokasi" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Semua Lokasi</SelectItem>
+            {/* DIHAPUS: <SelectItem value="">Semua Lokasi</SelectItem> */}
             {provinces.map((province) => (
               <SelectItem key={province} value={province}>
                 {province}
@@ -246,7 +238,6 @@ export function EnhancedProductFilter({
 
       <Separator />
 
-      {/* Certification Filters */}
       <div className="space-y-3">
         <Label className="text-sm font-medium">Sertifikasi</Label>
         <div className="space-y-2">
@@ -255,10 +246,10 @@ export function EnhancedProductFilter({
               id="organic"
               checked={localFilters.organicCertified || false}
               onCheckedChange={(checked) => 
-                handleFilterUpdate("organicCertified", checked)
+                handleFilterUpdate("organicCertified", !!checked)
               }
             />
-            <Label htmlFor="organic" className="text-sm cursor-pointer">
+            <Label htmlFor="organic" className="text-sm font-normal cursor-pointer">
               Organik Bersertifikat
             </Label>
           </div>
@@ -267,10 +258,10 @@ export function EnhancedProductFilter({
               id="fairtrade"
               checked={localFilters.fairTradeCertified || false}
               onCheckedChange={(checked) => 
-                handleFilterUpdate("fairTradeCertified", checked)
+                handleFilterUpdate("fairTradeCertified", !!checked)
               }
             />
-            <Label htmlFor="fairtrade" className="text-sm cursor-pointer">
+            <Label htmlFor="fairtrade" className="text-sm font-normal cursor-pointer">
               Fair Trade
             </Label>
           </div>
