@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { Suspense } from "react";
-import { MainLayout } from "@/components/layout/main-layout";
+// DIUBAH: Menggunakan DashboardLayout, bukan MainLayout
+import { DashboardLayout } from "@/components/dashboard/dashboard-layout"; 
 import { SellerProductPage } from "@/components/dashboard/seller-product-page";
 import { Loader2 } from "lucide-react";
 
@@ -20,10 +21,11 @@ function LoadingFallback() {
 
 export default function DashboardProductsPage() {
   return (
-    <MainLayout>
+    // DIUBAH: Menggunakan DashboardLayout, bukan MainLayout
+    <DashboardLayout>
       <Suspense fallback={<LoadingFallback />}>
         <SellerProductPage />
       </Suspense>
-    </MainLayout>
+    </DashboardLayout>
   );
 }
