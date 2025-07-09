@@ -1,7 +1,9 @@
+// FILE PATH: /sikupi-frontend/src/lib/hooks/use-dashboard.ts
+
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { dashboardService } from "@/lib/api";
+import { dashboardService } from "@/lib/api/services/dashboard";
 
 // Query keys
 export const dashboardKeys = {
@@ -24,6 +26,10 @@ export function useDashboardMetrics() {
     queryKey: dashboardKeys.metrics(),
     queryFn: () => dashboardService.getMetrics(),
     staleTime: 2 * 60 * 1000, // 2 minutes
+    retry: 2, // Retry failed requests twice
+    retryDelay: 1000, // 1 second delay between retries
+    // Don't fail the query if the service returns mock data
+    throwOnError: false,
   });
 }
 
@@ -33,6 +39,8 @@ export function useSalesAnalytics(period: 'today' | 'week' | 'month' | 'year' = 
     queryKey: dashboardKeys.sales(period),
     queryFn: () => dashboardService.getSalesAnalytics(period),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+    throwOnError: false,
   });
 }
 
@@ -42,6 +50,8 @@ export function useProductAnalytics() {
     queryKey: dashboardKeys.products(),
     queryFn: () => dashboardService.getProductAnalytics(),
     staleTime: 10 * 60 * 1000, // 10 minutes
+    retry: 1,
+    throwOnError: false,
   });
 }
 
@@ -51,6 +61,8 @@ export function useCustomerAnalytics(period: 'week' | 'month' | 'year' = 'month'
     queryKey: dashboardKeys.customers(period),
     queryFn: () => dashboardService.getCustomerAnalytics(period),
     staleTime: 10 * 60 * 1000, // 10 minutes
+    retry: 1,
+    throwOnError: false,
   });
 }
 
@@ -60,6 +72,8 @@ export function useRecentActivity(limit: number = 10) {
     queryKey: dashboardKeys.activity(limit),
     queryFn: () => dashboardService.getRecentActivity(limit),
     staleTime: 1 * 60 * 1000, // 1 minute
+    retry: 1,
+    throwOnError: false,
   });
 }
 
@@ -69,6 +83,8 @@ export function useImpactMetrics() {
     queryKey: dashboardKeys.impact(),
     queryFn: () => dashboardService.getImpactMetrics(),
     staleTime: 15 * 60 * 1000, // 15 minutes
+    retry: 1,
+    throwOnError: false,
   });
 }
 
@@ -78,6 +94,8 @@ export function useRevenueTrend(period: 'week' | 'month' | 'year' = 'month') {
     queryKey: dashboardKeys.revenue(period),
     queryFn: () => dashboardService.getRevenueTrend(period),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+    throwOnError: false,
   });
 }
 
@@ -87,6 +105,8 @@ export function useOrderStatusDistribution() {
     queryKey: dashboardKeys.orderStatus(),
     queryFn: () => dashboardService.getOrderStatusDistribution(),
     staleTime: 2 * 60 * 1000, // 2 minutes
+    retry: 1,
+    throwOnError: false,
   });
 }
 
@@ -96,6 +116,8 @@ export function usePerformanceMetrics() {
     queryKey: dashboardKeys.performance(),
     queryFn: () => dashboardService.getPerformanceMetrics(),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+    throwOnError: false,
   });
 }
 
@@ -105,5 +127,7 @@ export function useInventoryAlerts() {
     queryKey: dashboardKeys.inventory(),
     queryFn: () => dashboardService.getInventoryAlerts(),
     staleTime: 1 * 60 * 1000, // 1 minute
+    retry: 1,
+    throwOnError: false,
   });
 }

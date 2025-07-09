@@ -1,3 +1,5 @@
+// FILE PATH: /sikupi-frontend/src/components/auth/register-form.tsx
+
 "use client";
 
 import { useState } from "react";
@@ -39,6 +41,7 @@ export function RegisterForm() {
     handleSubmit,
     watch,
     trigger,
+    setValue,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -49,13 +52,13 @@ export function RegisterForm() {
       confirmPassword: "",
       fullName: "",
       phone: "",
-      userType: undefined,
+      userType: "" as any, // Initialize as empty string instead of undefined
       address: "",
       city: "",
       province: "",
       postalCode: "",
       businessName: "",
-      businessType: "",
+      businessType: "" as any, // Initialize as empty string instead of undefined
       termsAccepted: false,
     },
   });
@@ -101,7 +104,32 @@ export function RegisterForm() {
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
-      await registerUser(data);
+      console.log('Form data being submitted:', data); // Debug log
+      
+      // Prepare the registration data
+      const registrationData = {
+        email: data.email,
+        password: data.password,
+        fullName: data.fullName,
+        phone: data.phone,
+        userType: data.userType,
+        address: data.address || "",
+        city: data.city || "",
+        province: data.province || "",
+        postalCode: data.postalCode || "",
+      };
+
+      // Only add business fields for sellers
+      if (data.userType === "seller") {
+        Object.assign(registrationData, {
+          businessName: data.businessName || "",
+          businessType: data.businessType || "",
+        });
+      }
+
+      console.log('Registration data prepared:', registrationData); // Debug log
+      
+      await registerUser(registrationData);
       
       toast.success("Registrasi berhasil!", {
         description: "Selamat datang di Sikupi! Akun Anda telah dibuat.",
@@ -110,6 +138,8 @@ export function RegisterForm() {
       router.push("/dashboard");
       
     } catch (error) {
+      console.error('Registration form error:', error); // Debug log
+      
       toast.error("Registrasi gagal", {
         description: error instanceof Error ? error.message : "Terjadi kesalahan saat mendaftar",
       });
@@ -192,11 +222,9 @@ export function RegisterForm() {
               placeholder="Pilih jenis akun"
               required
               options={USER_TYPE_OPTIONS}
-              value={watchedFields.userType}
+              value={watchedFields.userType || ""}
               onValueChange={(value) => {
-                register("userType").onChange({
-                  target: { value, name: "userType" }
-                });
+                setValue("userType", value as "seller" | "buyer", { shouldValidate: true });
               }}
               error={errors.userType?.message}
             />
@@ -209,7 +237,7 @@ export function RegisterForm() {
               {...register("address")}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormInput
                 label="Kota"
                 placeholder="Jakarta"
@@ -231,7 +259,6 @@ export function RegisterForm() {
               label="Kode Pos"
               placeholder="12345"
               required
-              maxLength={5}
               error={errors.postalCode?.message}
               {...register("postalCode")}
             />
@@ -247,8 +274,8 @@ export function RegisterForm() {
               </h3>
               <p className="text-sm text-muted-foreground">
                 {watchedUserType === "seller" 
-                  ? "Lengkapi informasi bisnis Anda"
-                  : "Setujui syarat dan ketentuan untuk menyelesaikan pendaftaran"
+                  ? "Lengkapi informasi bisnis Anda" 
+                  : "Konfirmasi pendaftaran Anda"
                 }
               </p>
             </div>
@@ -257,7 +284,7 @@ export function RegisterForm() {
               <>
                 <FormInput
                   label="Nama Bisnis"
-                  placeholder="Kafe ABC, Hotel XYZ, dll."
+                  placeholder="Nama kafe, toko, atau bisnis Anda"
                   required
                   error={errors.businessName?.message}
                   {...register("businessName")}
@@ -266,12 +293,11 @@ export function RegisterForm() {
                 <FormSelect
                   label="Jenis Bisnis"
                   placeholder="Pilih jenis bisnis"
+                  required
                   options={BUSINESS_TYPE_OPTIONS}
-                  value={watchedFields.businessType}
+                  value={watchedFields.businessType || ""}
                   onValueChange={(value) => {
-                    register("businessType").onChange({
-                      target: { value, name: "businessType" }
-                    });
+                    setValue("businessType", value, { shouldValidate: true });
                   }}
                   error={errors.businessType?.message}
                 />
@@ -279,26 +305,27 @@ export function RegisterForm() {
             )}
 
             <FormCheckbox
+              label="Syarat dan Ketentuan"
+              description={
+                <span>
+                  Saya menyetujui{" "}
+                  <Link href="/syarat" className="text-primary hover:underline">
+                    Syarat dan Ketentuan
+                  </Link>{" "}
+                  serta{" "}
+                  <Link href="/privasi" className="text-primary hover:underline">
+                    Kebijakan Privasi
+                  </Link>{" "}
+                  Sikupi
+                </span>
+              }
               required
-              checked={termsAccepted}
+              checked={watchedFields.termsAccepted || false}
               onCheckedChange={(checked) => {
-                setTermsAccepted(checked);
-                register("termsAccepted").onChange({
-                  target: { value: checked, name: "termsAccepted" }
-                });
+                setValue("termsAccepted", checked, { shouldValidate: true });
               }}
               error={errors.termsAccepted?.message}
-            >
-              Saya menyetujui{" "}
-              <Link href="/syarat" className="text-primary hover:text-primary/80 underline">
-                Syarat & Ketentuan
-              </Link>{" "}
-              dan{" "}
-              <Link href="/privasi" className="text-primary hover:text-primary/80 underline">
-                Kebijakan Privasi
-              </Link>{" "}
-              Sikupi
-            </FormCheckbox>
+            />
           </div>
         );
 
@@ -308,67 +335,71 @@ export function RegisterForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      {/* Progress Bar */}
-      <div className="space-y-2">
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>Langkah {currentStep} dari {totalSteps}</span>
+    <div className="w-full max-w-md mx-auto">
+      {/* Progress indicator */}
+      <div className="mb-8">
+        <div className="flex justify-between text-sm text-muted-foreground mb-2">
+          <span>Step {currentStep} of {totalSteps}</span>
           <span>{Math.round(progress)}%</span>
         </div>
-        <Progress value={progress} className="w-full" />
+        <Progress value={progress} className="h-2" />
       </div>
 
-      {/* Step Content */}
-      {renderStep()}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {renderStep()}
 
-      {/* Navigation Buttons */}
-      <div className="flex gap-4">
-        {currentStep > 1 && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={prevStep}
-            className="flex-1"
-          >
-            <ChevronLeft className="mr-2 h-4 w-4" />
-            Sebelumnya
-          </Button>
-        )}
+        {/* Navigation buttons */}
+        <div className="flex justify-between pt-6">
+          {currentStep > 1 ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={prevStep}
+              disabled={isLoading}
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Sebelumnya
+            </Button>
+          ) : (
+            <div />
+          )}
 
-        {currentStep < totalSteps ? (
-          <Button
-            type="button"
-            onClick={nextStep}
-            className="flex-1"
-          >
-            Selanjutnya
-            <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
-        ) : (
-          <Button
-            type="submit"
-            className="flex-1"
-            disabled={isLoading || !termsAccepted}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Sedang mendaftar...
-              </>
-            ) : (
-              "Daftar Sekarang"
-            )}
-          </Button>
-        )}
+          {currentStep < totalSteps ? (
+            <Button
+              type="button"
+              onClick={nextStep}
+              disabled={isLoading}
+            >
+              Selanjutnya
+              <ChevronRight className="w-4 h-4 ml-2" />
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              disabled={isLoading || !watchedFields.termsAccepted}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Mendaftar...
+                </>
+              ) : (
+                "Buat Akun"
+              )}
+            </Button>
+          )}
+        </div>
+      </form>
+
+      {/* Login link */}
+      <div className="text-center mt-6">
+        <p className="text-sm text-muted-foreground">
+          Sudah punya akun?{" "}
+          <Link href="/masuk" className="text-primary font-medium hover:underline">
+            Masuk di sini
+          </Link>
+        </p>
       </div>
-
-      {/* Login Link */}
-      <div className="text-center text-sm text-muted-foreground">
-        Sudah punya akun?{" "}
-        <Link href="/masuk" className="text-primary hover:text-primary/80 font-medium transition-colors">
-          Masuk di sini
-        </Link>
-      </div>
-    </form>
+    </div>
   );
 }
