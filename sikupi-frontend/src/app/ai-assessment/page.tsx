@@ -107,7 +107,7 @@ export default function AIAssessmentPage() {
                 <Sparkles className="h-8 w-8 text-primary" />
               </div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-                AI Assessment
+                Ampas Analyzer
               </h1>
             </div>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">

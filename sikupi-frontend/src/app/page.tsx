@@ -29,10 +29,10 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-foreground mb-4">
-              Dampak Positif Sikupi
+              Sikupi Tracker
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Bergabunglah dengan ribuan petani dan pembeli yang telah merasakan manfaat ekonomi circular melalui platform kami
+              Bergabunglah dengan ribuan pelaku usaha kopi dan pembeli yang telah merasakan manfaat ekonomi sirkular melalui platform kami.
             </p>
           </div>
           
@@ -135,7 +135,7 @@ export default function HomePage() {
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" asChild className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
+            <Button size="lg" variant="outline" asChild className="border-primary-foreground text-primary hover:bg-primary-foreground hover:text-primary">
               <Link href="/produk">
                 Jelajahi Produk
               </Link>

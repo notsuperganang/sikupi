@@ -143,7 +143,14 @@ export default function ChatbotPage() {
             <div className="inline-flex items-center justify-center gap-2 mb-4 p-2 bg-primary/10 rounded-full">
               <Bot className="h-10 w-10 text-primary" />
             </div>
-            <h1 className="text-4xl font-bold tracking-tight">SikupiBot</h1>
+            <div className="flex items-center justify-center gap-2 mb-4">
+                          <div className="p-3 bg-primary/10 rounded-full">
+                            <Sparkles className="h-8 w-8 text-primary" />
+                          </div>
+                          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+                            Chatbot
+                          </h1>
+                        </div>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mt-2">
               Asisten AI cerdas untuk membantu Anda memahami ampas kopi dan menggunakan platform Sikupi.
             </p>

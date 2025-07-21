@@ -374,7 +374,7 @@ export default function EducationPage() {
         <div className="py-12">
           {/* Header */}
           <div className="text-center space-y-4 mb-12">
-            <h1 className="text-4xl font-bold">Pusat Edukasi Sikupi</h1>
+            <h1 className="text-4xl font-bold">Pusat Edukasi Sikupi - Sikupi Magazine</h1>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
               Pelajari cara mengolah ampas kopi menjadi produk bernilai. Temukan artikel, tutorial, dan tips dari para ahli.
             </p>
