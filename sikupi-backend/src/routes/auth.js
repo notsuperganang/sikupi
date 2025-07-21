@@ -1,3 +1,6 @@
+// FILE: sikupi-backend/src/routes/auth.js
+// PERBAIKAN: Field name mapping dan response format
+
 const express = require('express');
 const bcrypt = require('bcrypt');
 const { v4: uuidv4 } = require('uuid');
@@ -8,7 +11,7 @@ const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Register new user
+// Register new user - FIXED VERSION
 router.post('/register', validateBody(schemas.userRegistration), async (req, res) => {
   try {
     const { email, password, ...userData } = req.body;
@@ -31,15 +34,25 @@ router.post('/register', validateBody(schemas.userRegistration), async (req, res
     const saltRounds = 10;
     const password_hash = await bcrypt.hash(password, saltRounds);
 
+    // Map camelCase frontend fields to snake_case database fields
+    const dbUserData = {
+      id: uuidv4(),
+      email,
+      password_hash,
+      full_name: userData.fullName || userData.full_name,
+      phone: userData.phone,
+      user_type: userData.userType || userData.user_type || 'buyer',
+      business_name: userData.businessName || userData.business_name,
+      address: userData.address,
+      city: userData.city,
+      province: userData.province,
+      postal_code: userData.postalCode || userData.postal_code
+    };
+
     // Create user using admin client (bypasses RLS for registration)
     const { data: user, error } = await supabaseAdmin
       .from('users')
-      .insert({
-        id: uuidv4(),
-        email,
-        password_hash,
-        ...userData
-      })
+      .insert(dbUserData)
       .select('id, email, full_name, phone, user_type, business_name, address, city, province, postal_code, is_verified, rating, total_reviews, created_at')
       .single();
 
@@ -73,9 +86,28 @@ router.post('/register', validateBody(schemas.userRegistration), async (req, res
     const token = generateToken({ userId: user.id, email: user.email });
     const refreshToken = generateRefreshToken({ userId: user.id });
 
+    // Convert snake_case to camelCase for frontend compatibility
+    const frontendUser = {
+      id: user.id,
+      email: user.email,
+      fullName: user.full_name,
+      phone: user.phone,
+      userType: user.user_type,
+      businessName: user.business_name,
+      address: user.address,
+      city: user.city,
+      province: user.province,
+      postalCode: user.postal_code,
+      isVerified: user.is_verified,
+      rating: user.rating,
+      totalReviews: user.total_reviews,
+      createdAt: user.created_at
+    };
+
     res.status(201).json({
+      success: true,
       message: 'User registered successfully',
-      user,
+      user: frontendUser,
       token,
       refreshToken
     });
@@ -88,7 +120,7 @@ router.post('/register', validateBody(schemas.userRegistration), async (req, res
   }
 });
 
-// Login user
+// Login user - UPDATED VERSION with consistent response format
 router.post('/login', validateBody(schemas.userLogin), async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -102,6 +134,7 @@ router.post('/login', validateBody(schemas.userLogin), async (req, res) => {
 
     if (error || !user) {
       return res.status(401).json({
+        success: false,
         error: 'Invalid credentials',
         message: 'Email or password is incorrect'
       });
@@ -112,6 +145,7 @@ router.post('/login', validateBody(schemas.userLogin), async (req, res) => {
 
     if (!isPasswordValid) {
       return res.status(401).json({
+        success: false,
         error: 'Invalid credentials',
         message: 'Email or password is incorrect'
       });
@@ -121,77 +155,81 @@ router.post('/login', validateBody(schemas.userLogin), async (req, res) => {
     const token = generateToken({ userId: user.id, email: user.email });
     const refreshToken = generateRefreshToken({ userId: user.id });
 
-    // Remove password hash from response
-    const { password_hash, ...userWithoutPassword } = user;
+    // Convert snake_case to camelCase for frontend compatibility
+    const frontendUser = {
+      id: user.id,
+      email: user.email,
+      fullName: user.full_name,
+      phone: user.phone,
+      userType: user.user_type,
+      businessName: user.business_name,
+      address: user.address,
+      city: user.city,
+      province: user.province,
+      postalCode: user.postal_code,
+      isVerified: user.is_verified,
+      rating: user.rating,
+      totalReviews: user.total_reviews,
+      profileImageUrl: user.profile_image_url,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at
+    };
 
     res.json({
+      success: true,
       message: 'Login successful',
-      user: userWithoutPassword,
+      user: frontendUser,
       token,
       refreshToken
     });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({
+      success: false,
       error: 'Internal server error',
       message: 'Something went wrong during login'
     });
   }
 });
 
-// Get current user profile
+// Get current user profile - FIXED VERSION
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
-    const { password_hash, ...userWithoutPassword } = req.user;
-    
+    // Convert snake_case to camelCase for frontend compatibility
+    const frontendUser = {
+      id: req.user.id,
+      email: req.user.email,
+      fullName: req.user.full_name,
+      phone: req.user.phone,
+      userType: req.user.user_type,
+      businessName: req.user.business_name,
+      address: req.user.address,
+      city: req.user.city,
+      province: req.user.province,
+      postalCode: req.user.postal_code,
+      isVerified: req.user.is_verified,
+      rating: req.user.rating,
+      totalReviews: req.user.total_reviews,
+      profileImageUrl: req.user.profile_image_url,
+      createdAt: req.user.created_at,
+      updatedAt: req.user.updated_at
+    };
+
     res.json({
-      user: userWithoutPassword
+      success: true,
+      user: frontendUser
     });
   } catch (error) {
-    console.error('Profile error:', error);
+    console.error('Profile fetch error:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: 'Could not retrieve profile'
+      message: 'Something went wrong while fetching profile'
     });
   }
 });
 
-// Update user profile
-router.put('/profile', authenticateToken, validateBody(schemas.userUpdate), async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const updateData = req.body;
-
-    const { data: user, error } = await supabase
-      .from('users')
-      .update(updateData)
-      .eq('id', userId)
-      .select('id, email, full_name, phone, user_type, business_name, address, city, province, postal_code, is_verified, rating, total_reviews, created_at, updated_at')
-      .single();
-
-    if (error) {
-      console.error('Profile update error:', error);
-      return res.status(500).json({
-        error: 'Update failed',
-        message: 'Could not update profile'
-      });
-    }
-
-    res.json({
-      message: 'Profile updated successfully',
-      user
-    });
-  } catch (error) {
-    console.error('Profile update error:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      message: 'Something went wrong during profile update'
-    });
-  }
-});
-
-// Change password
-router.post('/change-password', authenticateToken, async (req, res) => {
+// Update password
+router.put('/password', authenticateToken, async (req, res) => {
   try {
     const { current_password, new_password } = req.body;
 
@@ -199,13 +237,6 @@ router.post('/change-password', authenticateToken, async (req, res) => {
       return res.status(400).json({
         error: 'Missing required fields',
         message: 'Current password and new password are required'
-      });
-    }
-
-    if (new_password.length < 6) {
-      return res.status(400).json({
-        error: 'Invalid password',
-        message: 'New password must be at least 6 characters long'
       });
     }
 
@@ -238,6 +269,7 @@ router.post('/change-password', authenticateToken, async (req, res) => {
     }
 
     res.json({
+      success: true,
       message: 'Password changed successfully'
     });
   } catch (error) {
@@ -252,6 +284,7 @@ router.post('/change-password', authenticateToken, async (req, res) => {
 // Logout (client-side token invalidation)
 router.post('/logout', authenticateToken, (req, res) => {
   res.json({
+    success: true,
     message: 'Logout successful'
   });
 });
@@ -273,6 +306,7 @@ router.post('/refresh', async (req, res) => {
     const newToken = generateToken({ userId: req.user?.id });
     
     res.json({
+      success: true,
       token: newToken
     });
   } catch (error) {

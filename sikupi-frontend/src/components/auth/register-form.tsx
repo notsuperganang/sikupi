@@ -102,10 +102,48 @@ export function RegisterForm() {
     }
 
     try {
-      const { confirmPassword, ...registerData } = formData;
-      await registerMutation.mutateAsync(registerData);
+      // FIXED: Rename to avoid variable collision
+      const { confirmPassword, ...registrationData } = formData;
+      
+      // FIXED: Create properly typed clean data
+      const cleanedData: any = {};
+      
+      // Copy required fields
+      cleanedData.email = registrationData.email;
+      cleanedData.password = registrationData.password;
+      cleanedData.fullName = registrationData.fullName;
+      cleanedData.phone = registrationData.phone;
+      cleanedData.userType = registrationData.userType;
+      
+      // Add optional fields only if they have values
+      if (registrationData.address?.trim()) {
+        cleanedData.address = registrationData.address;
+      }
+      if (registrationData.city?.trim()) {
+        cleanedData.city = registrationData.city;
+      }
+      if (registrationData.province?.trim()) {
+        cleanedData.province = registrationData.province;
+      }
+      if (registrationData.postalCode?.trim()) {
+        cleanedData.postalCode = registrationData.postalCode;
+      }
+      
+      // Business fields only for sellers
+      if (registrationData.userType === 'seller') {
+        if (registrationData.businessName?.trim()) {
+          cleanedData.businessName = registrationData.businessName;
+        }
+        if (registrationData.businessType?.trim()) {
+          cleanedData.businessType = registrationData.businessType;
+        }
+      }
+
+      console.log('Sending registration data:', cleanedData); // Debug log
+      
+      await registerMutation.mutateAsync(cleanedData);
     } catch (error) {
-      // Error handling is done in the mutation
+      console.error("Registration error:", error);
     }
   };
 

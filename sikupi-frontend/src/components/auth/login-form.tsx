@@ -53,18 +53,20 @@ export function LoginForm() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+  e.preventDefault();
+  
+  if (!validateForm()) {
+    return;
+  }
 
-    try {
-      await loginMutation.mutateAsync(formData);
-    } catch (error) {
-      // Error handling is done in the mutation
-    }
-  };
+  try {
+    await loginMutation.mutateAsync(formData);
+    // Success handling sudah di-handle di useLogin hook
+  } catch (error) {
+    // Error handling juga sudah di-handle di useLogin hook
+    console.error("Login error:", error);
+  }
+};
 
   const handleDemoLogin = (userType: 'seller' | 'buyer') => {
     const demoCredentials = {

@@ -8,6 +8,47 @@ const { validateBody, validateParams, validateQuery, schemas } = require('../mid
 
 const router = express.Router();
 
+// Helper function untuk convert snake_case ke camelCase
+const formatProductForFrontend = (product) => {
+  return {
+    id: product.id,
+    sellerId: product.seller_id,
+    title: product.title,
+    description: product.description,
+    wasteType: product.waste_type,
+    quantityKg: parseFloat(product.quantity_kg),
+    pricePerKg: parseFloat(product.price_per_kg),
+    qualityGrade: product.quality_grade,
+    processingMethod: product.processing_method,
+    originLocation: product.origin_location,
+    harvestDate: product.harvest_date,
+    expiryDate: product.expiry_date,
+    moistureContent: product.moisture_content ? parseFloat(product.moisture_content) : null,
+    organicCertified: product.organic_certified,
+    fairTradeCertified: product.fair_trade_certified,
+    status: product.status,
+    imageUrls: product.image_urls || [],
+    tags: product.tags || [],
+    viewsCount: product.views_count || 0,
+    favoritesCount: product.favorites_count || 0,
+    createdAt: product.created_at,
+    updatedAt: product.updated_at,
+    // Seller info dengan camelCase
+    seller: product.users ? {
+      id: product.users.id,
+      fullName: product.users.full_name,
+      businessName: product.users.business_name,
+      city: product.users.city,
+      province: product.users.province,
+      rating: parseFloat(product.users.rating || 0),
+      totalReviews: product.users.total_reviews || 0,
+      isVerified: product.users.is_verified || false,
+      phone: product.users.phone,
+      email: product.users.email
+    } : null
+  };
+};
+
 // Configure multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -23,7 +64,7 @@ const upload = multer({
   }
 });
 
-// Get all products with filtering and pagination
+// Get all products with filtering and pagination - UPDATED VERSION
 router.get('/', validateQuery(schemas.productQuery), optionalAuth, async (req, res) => {
   try {
     const {
@@ -31,16 +72,34 @@ router.get('/', validateQuery(schemas.productQuery), optionalAuth, async (req, r
       limit = 10,
       search,
       waste_type,
+      wasteType, // Support both formats
       quality_grade,
+      qualityGrade, // Support both formats
       min_price,
+      minPrice, // Support both formats
       max_price,
+      maxPrice, // Support both formats
       city,
       province,
       organic_certified,
+      organicCertified, // Support both formats
       fair_trade_certified,
+      fairTradeCertified, // Support both formats
       sort_by = 'created_at',
+      sortBy, // Support both formats
       order = 'desc'
     } = req.query;
+
+    // Normalize parameters (prefer camelCase if available)
+    const normalizedParams = {
+      wasteType: wasteType || waste_type,
+      qualityGrade: qualityGrade || quality_grade,
+      minPrice: minPrice || min_price,
+      maxPrice: maxPrice || max_price,
+      organicCertified: organicCertified !== undefined ? organicCertified : organic_certified,
+      fairTradeCertified: fairTradeCertified !== undefined ? fairTradeCertified : fair_trade_certified,
+      sortBy: sortBy || sort_by
+    };
 
     let query = supabase
       .from('products')
@@ -64,20 +123,20 @@ router.get('/', validateQuery(schemas.productQuery), optionalAuth, async (req, r
       query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
     }
 
-    if (waste_type) {
-      query = query.eq('waste_type', waste_type);
+    if (normalizedParams.wasteType) {
+      query = query.eq('waste_type', normalizedParams.wasteType);
     }
 
-    if (quality_grade) {
-      query = query.eq('quality_grade', quality_grade);
+    if (normalizedParams.qualityGrade) {
+      query = query.eq('quality_grade', normalizedParams.qualityGrade);
     }
 
-    if (min_price) {
-      query = query.gte('price_per_kg', min_price);
+    if (normalizedParams.minPrice) {
+      query = query.gte('price_per_kg', normalizedParams.minPrice);
     }
 
-    if (max_price) {
-      query = query.lte('price_per_kg', max_price);
+    if (normalizedParams.maxPrice) {
+      query = query.lte('price_per_kg', normalizedParams.maxPrice);
     }
 
     if (city) {
@@ -88,57 +147,94 @@ router.get('/', validateQuery(schemas.productQuery), optionalAuth, async (req, r
       query = query.eq('users.province', province);
     }
 
-    if (organic_certified !== undefined) {
-      query = query.eq('organic_certified', organic_certified);
+    if (normalizedParams.organicCertified !== undefined) {
+      query = query.eq('organic_certified', normalizedParams.organicCertified);
     }
 
-    if (fair_trade_certified !== undefined) {
-      query = query.eq('fair_trade_certified', fair_trade_certified);
+    if (normalizedParams.fairTradeCertified !== undefined) {
+      query = query.eq('fair_trade_certified', normalizedParams.fairTradeCertified);
     }
 
     // Apply sorting
     const ascending = order === 'asc';
-    query = query.order(sort_by, { ascending });
+    let sortField = normalizedParams.sortBy;
+    
+    // Handle frontend sortBy values
+    if (sortField === 'newest') sortField = 'created_at';
+    if (sortField === 'oldest') { sortField = 'created_at'; }
+    if (sortField === 'price_low') { sortField = 'price_per_kg'; }
+    if (sortField === 'price_high') { sortField = 'price_per_kg'; }
+    if (sortField === 'popular') sortField = 'views_count';
+    if (sortField === 'rating') sortField = 'users.rating';
+
+    query = query.order(sortField, { ascending: sortField === 'oldest' ? true : ascending });
 
     // Apply pagination
-    const offset = (page - 1) * limit;
-    query = query.range(offset, offset + limit - 1);
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    query = query.range(offset, offset + parseInt(limit) - 1);
 
     const { data: products, error } = await query;
 
     if (error) {
       console.error('Products fetch error:', error);
       return res.status(500).json({
+        success: false,
         error: 'Failed to fetch products',
         message: 'Could not retrieve products'
       });
     }
 
     // Get total count for pagination
-    const { count } = await supabase
+    let countQuery = supabase
       .from('products')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'active');
 
+    // Apply same filters for count
+    if (search) {
+      countQuery = countQuery.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+    }
+    if (normalizedParams.wasteType) {
+      countQuery = countQuery.eq('waste_type', normalizedParams.wasteType);
+    }
+    if (normalizedParams.qualityGrade) {
+      countQuery = countQuery.eq('quality_grade', normalizedParams.qualityGrade);
+    }
+    if (normalizedParams.minPrice) {
+      countQuery = countQuery.gte('price_per_kg', normalizedParams.minPrice);
+    }
+    if (normalizedParams.maxPrice) {
+      countQuery = countQuery.lte('price_per_kg', normalizedParams.maxPrice);
+    }
+
+    const { count } = await countQuery;
+
+    // Format products for frontend
+    const formattedProducts = products.map(formatProductForFrontend);
+
     res.json({
-      products,
+      success: true,
+      products: formattedProducts,
       pagination: {
-        page,
-        limit,
-        total: count,
-        totalPages: Math.ceil(count / limit)
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(count / parseInt(limit)),
+        pageSize: parseInt(limit),
+        totalItems: count,
+        hasNextPage: parseInt(page) < Math.ceil(count / parseInt(limit)),
+        hasPrevPage: parseInt(page) > 1
       }
     });
   } catch (error) {
     console.error('Products fetch error:', error);
     res.status(500).json({
+      success: false,
       error: 'Internal server error',
       message: 'Something went wrong while fetching products'
     });
   }
 });
 
-// Get single product by ID
+// Get single product by ID - UPDATED VERSION  
 router.get('/:id', validateParams(schemas.uuidParam), optionalAuth, async (req, res) => {
   try {
     const { id } = req.params;
@@ -158,12 +254,6 @@ router.get('/:id', validateParams(schemas.uuidParam), optionalAuth, async (req, 
           is_verified,
           phone,
           email
-        ),
-        product_images (
-          id,
-          image_url,
-          alt_text,
-          display_order
         )
       `)
       .eq('id', id)
@@ -171,6 +261,7 @@ router.get('/:id', validateParams(schemas.uuidParam), optionalAuth, async (req, 
 
     if (error || !product) {
       return res.status(404).json({
+        success: false,
         error: 'Product not found',
         message: 'The requested product does not exist'
       });
@@ -179,11 +270,11 @@ router.get('/:id', validateParams(schemas.uuidParam), optionalAuth, async (req, 
     // Increment view count using admin client
     await supabaseAdmin
       .from('products')
-      .update({ views_count: product.views_count + 1 })
+      .update({ views_count: (product.views_count || 0) + 1 })
       .eq('id', id);
 
     // Check if user has favorited this product
-    let is_favorited = false;
+    let isFavorited = false;
     if (req.user) {
       const { data: favorite } = await supabase
         .from('user_favorites')
@@ -192,20 +283,25 @@ router.get('/:id', validateParams(schemas.uuidParam), optionalAuth, async (req, 
         .eq('product_id', id)
         .single();
 
-      is_favorited = !!favorite;
+      isFavorited = !!favorite;
     }
 
+    // Format product for frontend
+    const formattedProduct = {
+      ...formatProductForFrontend(product),
+      isFavorited
+    };
+
     res.json({
-      product: {
-        ...product,
-        is_favorited
-      }
+      success: true,
+      product: formattedProduct
     });
   } catch (error) {
     console.error('Product fetch error:', error);
     res.status(500).json({
+      success: false,
       error: 'Internal server error',
-      message: 'Something went wrong while fetching the product'
+      message: 'Something went wrong while fetching product'
     });
   }
 });
