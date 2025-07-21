@@ -87,7 +87,7 @@ export function useSearchProducts(
   });
 }
 
-// Get featured products
+// Get featured products - FIXED VERSION
 export function useFeaturedProducts(limit: number = 8) {
   return useQuery({
     queryKey: productKeys.featured(limit),
@@ -96,6 +96,11 @@ export function useFeaturedProducts(limit: number = 8) {
     gcTime: 30 * 60 * 1000, // 30 minutes
     retry: 1,
     refetchOnWindowFocus: false,
+    // TAMBAHAN: Debug transform untuk melihat data
+    select: (data) => {
+      console.log('useFeaturedProducts - Raw data:', data);
+      return data;
+    }
   });
 }
 
@@ -247,7 +252,7 @@ export function useDeleteProduct() {
   });
 }
 
-// Toggle favorite product
+// Toggle favorite product - FIXED SIGNATURE
 export function useToggleFavorite() {
   const queryClient = useQueryClient();
 
@@ -255,6 +260,7 @@ export function useToggleFavorite() {
     mutationFn: ({ productId, isFavorited }: { productId: string; isFavorited: boolean }) => {
       // This would need backend endpoint for favoriting
       // For now, placeholder
+      console.log(`Toggling favorite for product ${productId} to ${isFavorited}`);
       return Promise.resolve({ success: true, isFavorited: !isFavorited });
     },
     onSuccess: (result, variables) => {

@@ -312,15 +312,16 @@ export const productsService = {
   },
 
   /**
-   * Get featured products
+   * Get featured products - FIXED VERSION
    */
-  getFeaturedProducts: async (limit: number = 8): Promise<Product[]> => {
+  getFeaturedProducts: async (limit: number = 8): Promise<ProductsResponse> => {
     try {
+      // PERBAIKAN: Return ProductsResponse, bukan Product[]
       const response = await productsService.getProducts({
         limit,
         sortBy: "popular"
       });
-      return response.products;
+      return response; // Return full response untuk konsistensi
     } catch (error: any) {
       const message = error.response?.data?.message || error.message || "Gagal mengambil produk unggulan";
       throw new Error(message);

@@ -1,4 +1,6 @@
 // FILE: src/components/products/featured-products.tsx
+// CLEAN VERSION - Remove debug UI, keep console logging
+
 "use client";
 
 import { ProductCard } from "./product-card";
@@ -25,6 +27,19 @@ export function FeaturedProducts({
 }: FeaturedProductsProps) {
   const { data, isLoading, error } = useFeaturedProducts(limit);
 
+  // DEBUG: Log data untuk debugging (console only)
+  console.log('FeaturedProducts - data:', data);
+  console.log('FeaturedProducts - isLoading:', isLoading);
+  console.log('FeaturedProducts - error:', error);
+
+  // Extract products from ProductsResponse
+  const products = data?.products || [];
+
+  // Early return dengan pesan debug saat tidak ada data (console only)
+  if (!isLoading && !error && products.length === 0) {
+    console.warn('FeaturedProducts: No products found');
+  }
+
   return (
     <section className={`py-12 ${className}`}>
       <div className="container mx-auto px-4">
@@ -49,7 +64,7 @@ export function FeaturedProducts({
         </div>
 
         <ProductList 
-          products={data?.products || []}
+          products={products}
           isLoading={isLoading}
           error={error}
         />

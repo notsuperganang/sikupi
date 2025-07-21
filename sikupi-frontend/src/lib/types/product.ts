@@ -1,5 +1,5 @@
-// FILE 1: sikupi-frontend/src/lib/types/product.ts
-// GANTI line 112 dan 171 untuk fix duplicate identifier:
+// FILE: sikupi-frontend/src/lib/types/product.ts
+// PERBAIKAN INTERFACE PRODUCT - Tambah expiryDate dan fields lainnya
 
 export interface Product {
   id: string;
@@ -9,27 +9,48 @@ export interface Product {
   quantityKg: number;
   pricePerKg: number;
   totalPrice?: number;
-  grade?: "A" | "B" | "C";
+  
+  // Quality & Category
+  grade?: "A" | "B" | "C"; // Legacy field for compatibility
+  qualityGrade?: "A" | "B" | "C"; // Primary field from backend
   category?: "pupuk" | "kompos" | "kerajinan" | "pakan";
-  location?: string;
+  
+  // Location fields
+  location?: string; // Legacy field for compatibility 
+  originLocation?: string; // Primary field from backend
+  
+  // Processing & Date fields
   processingMethod?: string;
-  harvestDate?: string;
-  moistureContent?: number;
+  harvestDate?: string | null;
+  expiryDate?: string | null; // FIX: Add missing expiryDate field
+  
+  // Content properties
+  moistureContent?: number | null;
   organicCertified?: boolean;
   fairTradeCertified?: boolean;
+  
+  // Status & Media
   status: "active" | "inactive" | "sold_out";
   images: string[];
   tags: string[];
+  
+  // Engagement metrics
   viewsCount: number;
   favoritesCount: number;
+  
+  // Seller references
   sellerId: string;
-  sellerName?: string;
+  sellerName?: string; // Legacy fields
   sellerBusinessName?: string;
   sellerRating?: number;
   sellerReviewCount?: number;
   sellerVerified?: boolean;
+  
+  // User interaction
   isAvailable?: boolean;
   isFavorited?: boolean;
+  
+  // Timestamps
   createdAt: string;
   updatedAt: string;
 
@@ -37,15 +58,15 @@ export interface Product {
   seller?: {
     id: string;
     fullName: string;
-    businessName?: string;
-    city?: string;
-    province?: string;
+    businessName?: string | null;
+    city?: string | null;
+    province?: string | null;
     rating: number;
     totalReviews: number;
     isVerified: boolean;
-    phone?: string;
-    email?: string;
-  };
+    phone?: string | null;
+    email?: string | null;
+  } | null;
 }
 
 // Product filters - UPDATED to match implementation
@@ -53,10 +74,10 @@ export interface ProductFilters {
   search?: string;
   category?: string;
   wasteType?: string;
-  grade?: string; // Untuk backend mapping ke qualityGrade
+  grade?: string; // Maps to qualityGrade on backend
   minPrice?: number;
   maxPrice?: number;
-  location?: string; // Untuk backend mapping ke city
+  location?: string; // Maps to city on backend
   organicCertified?: boolean;
   fairTradeCertified?: boolean;
   sortBy?: "newest" | "oldest" | "price_low" | "price_high" | "rating" | "popular";
@@ -65,7 +86,7 @@ export interface ProductFilters {
   status?: string;
 }
 
-// Product response with filters
+// Product response with pagination and filters
 export interface ProductsResponse {
   products: Product[];
   pagination: {
@@ -97,6 +118,7 @@ export interface CreateProductRequest {
   location?: string;
   processingMethod?: string;
   harvestDate?: string;
+  expiryDate?: string; // Include expiryDate in request
   moistureContent?: number;
   organicCertified?: boolean;
   fairTradeCertified?: boolean;
@@ -108,7 +130,7 @@ export interface UpdateProductRequest extends Partial<CreateProductRequest> {
   status?: "active" | "inactive" | "sold_out";
 }
 
-// FIXED: Rename to avoid duplicate identifier
+// Product categories response
 export interface ProductCategoryInfo {
   value: string;
   label: string;
@@ -122,7 +144,7 @@ export interface ProductCategoriesResponse {
   categories?: ProductCategoryInfo[];
 }
 
-// Product search/filter options
+// Additional utility interfaces
 export interface FilterOption {
   value: string;
   label: string;
@@ -134,7 +156,6 @@ export interface PriceRange {
   max: number;
 }
 
-// Product stats
 export interface ProductStats {
   totalViews: number;
   totalFavorites: number;
@@ -143,7 +164,6 @@ export interface ProductStats {
   salesCount: number;
 }
 
-// Quick product info for cards/lists
 export interface ProductSummary {
   id: string;
   title: string;
@@ -156,16 +176,15 @@ export interface ProductSummary {
   isAvailable: boolean;
 }
 
-// Featured product interface
 export interface FeaturedProduct extends Product {
   featured: boolean;
   featuredReason?: string;
   displayOrder?: number;
 }
 
-// Export type utilities - FIXED: Use string union instead of interface name
+// Export type utilities
 export type ProductSortBy = ProductFilters["sortBy"];
 export type ProductWasteType = Product["wasteType"];
 export type ProductGrade = Product["grade"];
 export type ProductStatus = Product["status"];
-export type ProductCategoryType = Product["category"]; // Renamed to avoid duplicate
+export type ProductCategoryType = Product["category"];

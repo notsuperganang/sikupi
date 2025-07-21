@@ -8,7 +8,191 @@ const { validateBody, validateParams, validateQuery, schemas } = require('../mid
 
 const router = express.Router();
 
-// Helper function untuk convert snake_case ke camelCase
+// 🧪 TEST ENDPOINT - untuk debug seller join issue
+router.get('/debug/seller-test/:productId', async (req, res) => {
+  try {
+    const { productId } = req.params;
+    
+    console.log('🧪 SELLER DEBUG TEST START');
+    console.log('Testing product ID:', productId);
+
+    const results = {};
+
+    // Test 1: Basic product query
+    console.log('Test 1: Basic product query...');
+    try {
+      const { data: product, error: productError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', productId)
+        .single();
+
+      if (productError) throw productError;
+      
+      results.test1_product = {
+        success: true,
+        data: {
+          id: product.id,
+          title: product.title,
+          seller_id: product.seller_id
+        }
+      };
+      console.log('✅ Test 1 passed');
+    } catch (error) {
+      results.test1_product = {
+        success: false,
+        error: error.message
+      };
+      console.log('❌ Test 1 failed:', error.message);
+    }
+
+    // Test 2: Direct user query
+    if (results.test1_product.success) {
+      const sellerId = results.test1_product.data.seller_id;
+      console.log('Test 2: Direct user query for seller_id:', sellerId);
+      
+      try {
+        const { data: user, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', sellerId)
+          .single();
+
+        if (userError) throw userError;
+
+        results.test2_user = {
+          success: true,
+          data: {
+            id: user.id,
+            full_name: user.full_name,
+            business_name: user.business_name,
+            city: user.city
+          }
+        };
+        console.log('✅ Test 2 passed');
+      } catch (error) {
+        results.test2_user = {
+          success: false,
+          error: error.message,
+          details: error
+        };
+        console.log('❌ Test 2 failed:', error.message);
+      }
+    }
+
+    // Test 3: JOIN query
+    console.log('Test 3: JOIN query...');
+    try {
+      const { data: joinedData, error: joinError } = await supabase
+        .from('products')
+        .select(`
+          *,
+          users!products_seller_id_fkey (
+            id,
+            full_name,
+            business_name,
+            city,
+            province,
+            rating,
+            total_reviews,
+            is_verified
+          )
+        `)
+        .eq('id', productId)
+        .single();
+
+      if (joinError) throw joinError;
+
+      results.test3_join = {
+        success: true,
+        data: {
+          product_id: joinedData.id,
+          product_title: joinedData.title,
+          users_data: joinedData.users
+        }
+      };
+      console.log('✅ Test 3 passed');
+    } catch (error) {
+      results.test3_join = {
+        success: false,
+        error: error.message,
+        details: error
+      };
+      console.log('❌ Test 3 failed:', error.message);
+    }
+
+    // Test 4: Check RLS policies
+    console.log('Test 4: Checking RLS policies...');
+    try {
+      const { data: policies, error: policiesError } = await supabase
+        .from('pg_policies')
+        .select('*')
+        .eq('tablename', 'users');
+
+      results.test4_rls = {
+        success: !policiesError,
+        data: policies || [],
+        note: "Empty array means RLS might be disabled"
+      };
+      console.log('✅ Test 4 completed');
+    } catch (error) {
+      results.test4_rls = {
+        success: false,
+        error: error.message,
+        note: "Could not check RLS policies"
+      };
+    }
+
+    console.log('🧪 SELLER DEBUG TEST END');
+
+    res.json({
+      success: true,
+      debug_results: results,
+      recommendations: [
+        results.test1_product.success ? "✅ Product query OK" : "❌ Product not found or access denied",
+        results.test2_user?.success ? "✅ User query OK" : "❌ User access blocked - likely RLS issue",
+        results.test3_join?.success ? "✅ JOIN query OK" : "❌ JOIN blocked - check RLS policies",
+        "💡 If user queries fail, try: ALTER TABLE users DISABLE ROW LEVEL SECURITY;"
+      ]
+    });
+
+  } catch (error) {
+    console.error('💥 Debug test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Debug test failed',
+      message: error.message
+    });
+  }
+});
+
+// 🔍 TAMBAHAN: Endpoint untuk quick RLS check
+router.get('/debug/rls-status', async (req, res) => {
+  try {
+    // Check if we can access users table
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, full_name')
+      .limit(1);
+
+    res.json({
+      success: true,
+      can_access_users: !error,
+      error: error?.message || null,
+      sample_data: data?.[0] || null,
+      message: error 
+        ? "❌ Cannot access users table - likely RLS blocking"
+        : "✅ Can access users table - RLS OK or disabled"
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Clean formatProductForFrontend - remove excessive debug logs
 const formatProductForFrontend = (product) => {
   return {
     id: product.id,
@@ -16,35 +200,38 @@ const formatProductForFrontend = (product) => {
     title: product.title,
     description: product.description,
     wasteType: product.waste_type,
-    quantityKg: parseFloat(product.quantity_kg),
-    pricePerKg: parseFloat(product.price_per_kg),
+    quantityKg: parseFloat(product.quantity_kg || 0),
+    pricePerKg: parseFloat(product.price_per_kg || 0),
     qualityGrade: product.quality_grade,
+    grade: product.quality_grade,
     processingMethod: product.processing_method,
     originLocation: product.origin_location,
+    location: product.origin_location,
     harvestDate: product.harvest_date,
-    expiryDate: product.expiry_date,
+    expiryDate: product.expiry_date, // ✅ Include expiryDate
     moistureContent: product.moisture_content ? parseFloat(product.moisture_content) : null,
-    organicCertified: product.organic_certified,
-    fairTradeCertified: product.fair_trade_certified,
+    organicCertified: Boolean(product.organic_certified),
+    fairTradeCertified: Boolean(product.fair_trade_certified),
     status: product.status,
-    imageUrls: product.image_urls || [],
-    tags: product.tags || [],
-    viewsCount: product.views_count || 0,
-    favoritesCount: product.favorites_count || 0,
+    images: Array.isArray(product.image_urls) ? product.image_urls : [],
+    tags: Array.isArray(product.tags) ? product.tags : [],
+    viewsCount: parseInt(product.views_count || 0),
+    favoritesCount: parseInt(product.favorites_count || 0),
     createdAt: product.created_at,
     updatedAt: product.updated_at,
-    // Seller info dengan camelCase
+    
+    // Clean seller mapping
     seller: product.users ? {
       id: product.users.id,
-      fullName: product.users.full_name,
-      businessName: product.users.business_name,
-      city: product.users.city,
-      province: product.users.province,
+      fullName: product.users.full_name || 'Unknown Seller',
+      businessName: product.users.business_name || null,
+      city: product.users.city || null,
+      province: product.users.province || null,
       rating: parseFloat(product.users.rating || 0),
-      totalReviews: product.users.total_reviews || 0,
-      isVerified: product.users.is_verified || false,
-      phone: product.users.phone,
-      email: product.users.email
+      totalReviews: parseInt(product.users.total_reviews || 0),
+      isVerified: Boolean(product.users.is_verified),
+      phone: product.users.phone || null,
+      email: product.users.email || null
     } : null
   };
 };
@@ -64,7 +251,7 @@ const upload = multer({
   }
 });
 
-// Get all products with filtering and pagination - UPDATED VERSION
+// PERBAIKAN: Get all products dengan debug logging
 router.get('/', validateQuery(schemas.productQuery), optionalAuth, async (req, res) => {
   try {
     const {
@@ -72,25 +259,27 @@ router.get('/', validateQuery(schemas.productQuery), optionalAuth, async (req, r
       limit = 10,
       search,
       waste_type,
-      wasteType, // Support both formats
+      wasteType, 
       quality_grade,
-      qualityGrade, // Support both formats
+      qualityGrade, 
       min_price,
-      minPrice, // Support both formats
+      minPrice, 
       max_price,
-      maxPrice, // Support both formats
+      maxPrice, 
       city,
       province,
       organic_certified,
-      organicCertified, // Support both formats
+      organicCertified, 
       fair_trade_certified,
-      fairTradeCertified, // Support both formats
+      fairTradeCertified, 
       sort_by = 'created_at',
-      sortBy, // Support both formats
+      sortBy, 
       order = 'desc'
     } = req.query;
 
-    // Normalize parameters (prefer camelCase if available)
+    console.log('Products API called with params:', req.query); // DEBUG
+
+    // Normalize parameters
     const normalizedParams = {
       wasteType: wasteType || waste_type,
       qualityGrade: qualityGrade || quality_grade,
@@ -100,6 +289,8 @@ router.get('/', validateQuery(schemas.productQuery), optionalAuth, async (req, r
       fairTradeCertified: fairTradeCertified !== undefined ? fairTradeCertified : fair_trade_certified,
       sortBy: sortBy || sort_by
     };
+
+    console.log('Normalized params:', normalizedParams); // DEBUG
 
     let query = supabase
       .from('products')
@@ -113,7 +304,9 @@ router.get('/', validateQuery(schemas.productQuery), optionalAuth, async (req, r
           province,
           rating,
           total_reviews,
-          is_verified
+          is_verified,
+          phone,
+          email
         )
       `)
       .eq('status', 'active');
@@ -155,19 +348,34 @@ router.get('/', validateQuery(schemas.productQuery), optionalAuth, async (req, r
       query = query.eq('fair_trade_certified', normalizedParams.fairTradeCertified);
     }
 
-    // Apply sorting
+    // Apply sorting - PERBAIKAN
     const ascending = order === 'asc';
     let sortField = normalizedParams.sortBy;
     
     // Handle frontend sortBy values
     if (sortField === 'newest') sortField = 'created_at';
-    if (sortField === 'oldest') { sortField = 'created_at'; }
-    if (sortField === 'price_low') { sortField = 'price_per_kg'; }
-    if (sortField === 'price_high') { sortField = 'price_per_kg'; }
-    if (sortField === 'popular') sortField = 'views_count';
+    if (sortField === 'oldest') { 
+      sortField = 'created_at';
+    }
+    if (sortField === 'price_low') { 
+      sortField = 'price_per_kg'; 
+    }
+    if (sortField === 'price_high') { 
+      sortField = 'price_per_kg'; 
+    }
+    if (sortField === 'popular') {
+      sortField = 'views_count';
+      console.log('Sorting by popular (views_count)'); // DEBUG
+    }
     if (sortField === 'rating') sortField = 'users.rating';
 
-    query = query.order(sortField, { ascending: sortField === 'oldest' ? true : ascending });
+    const sortAscending = sortField === 'oldest' ? true : 
+                         (sortField === 'price_high' || sortField === 'views_count') ? false : 
+                         ascending;
+
+    console.log(`Sorting by: ${sortField}, ascending: ${sortAscending}`); // DEBUG
+
+    query = query.order(sortField, { ascending: sortAscending });
 
     // Apply pagination
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -182,6 +390,12 @@ router.get('/', validateQuery(schemas.productQuery), optionalAuth, async (req, r
         error: 'Failed to fetch products',
         message: 'Could not retrieve products'
       });
+    }
+
+    console.log(`Found ${products?.length || 0} products`); // DEBUG
+    
+    if (products && products.length > 0) {
+      console.log('Sample product before formatting:', products[0]); // DEBUG
     }
 
     // Get total count for pagination
@@ -210,20 +424,30 @@ router.get('/', validateQuery(schemas.productQuery), optionalAuth, async (req, r
     const { count } = await countQuery;
 
     // Format products for frontend
-    const formattedProducts = products.map(formatProductForFrontend);
+    const formattedProducts = products ? products.map(formatProductForFrontend) : [];
 
-    res.json({
+    console.log(`Returning ${formattedProducts.length} formatted products`); // DEBUG
+
+    const response = {
       success: true,
       products: formattedProducts,
       pagination: {
         currentPage: parseInt(page),
-        totalPages: Math.ceil(count / parseInt(limit)),
+        totalPages: Math.ceil((count || 0) / parseInt(limit)),
         pageSize: parseInt(limit),
-        totalItems: count,
-        hasNextPage: parseInt(page) < Math.ceil(count / parseInt(limit)),
+        totalItems: count || 0,
+        hasNextPage: parseInt(page) < Math.ceil((count || 0) / parseInt(limit)),
         hasPrevPage: parseInt(page) > 1
       }
-    });
+    };
+
+    console.log('Final API response structure:', {
+      success: response.success,
+      productsCount: response.products.length,
+      pagination: response.pagination
+    }); // DEBUG
+
+    res.json(response);
   } catch (error) {
     console.error('Products fetch error:', error);
     res.status(500).json({
@@ -234,12 +458,16 @@ router.get('/', validateQuery(schemas.productQuery), optionalAuth, async (req, r
   }
 });
 
-// Get single product by ID - UPDATED VERSION  
+// Get single product by ID - CLEAN PRODUCTION VERSION  
 router.get('/:id', validateParams(schemas.uuidParam), optionalAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user?.id;
 
-    const { data: product, error } = await supabase
+    // Basic logging for monitoring
+    console.log(`Fetching product: ${id}`);
+
+    let query = supabase
       .from('products')
       .select(`
         *,
@@ -259,31 +487,43 @@ router.get('/:id', validateParams(schemas.uuidParam), optionalAuth, async (req, 
       .eq('id', id)
       .single();
 
-    if (error || !product) {
-      return res.status(404).json({
+    const { data: product, error } = await query;
+
+    if (error) {
+      console.error('Product fetch error:', error.code, error.message);
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({
+          success: false,
+          error: 'Product not found',
+          message: 'The requested product does not exist'
+        });
+      }
+      return res.status(500).json({
         success: false,
-        error: 'Product not found',
-        message: 'The requested product does not exist'
+        error: 'Failed to fetch product',
+        message: 'Could not retrieve product details'
       });
     }
 
-    // Increment view count using admin client
-    await supabaseAdmin
-      .from('products')
-      .update({ views_count: (product.views_count || 0) + 1 })
-      .eq('id', id);
-
-    // Check if user has favorited this product
+    // Check if user has favorited this product (if authenticated)
     let isFavorited = false;
-    if (req.user) {
-      const { data: favorite } = await supabase
-        .from('user_favorites')
-        .select('id')
-        .eq('user_id', req.user.id)
-        .eq('product_id', id)
-        .single();
+    if (userId) {
+      // TODO: Implement favorites check when favorites table is ready
+      // const { data: favorite } = await supabase
+      //   .from('favorites')
+      //   .select('id')
+      //   .eq('user_id', userId)
+      //   .eq('product_id', id)
+      //   .single();
+      // isFavorited = !!favorite;
+    }
 
-      isFavorited = !!favorite;
+    // Increment view count (only in production)
+    if (process.env.NODE_ENV === 'production') {
+      await supabase
+        .from('products')
+        .update({ views_count: (product.views_count || 0) + 1 })
+        .eq('id', id);
     }
 
     // Format product for frontend
@@ -292,12 +532,15 @@ router.get('/:id', validateParams(schemas.uuidParam), optionalAuth, async (req, 
       isFavorited
     };
 
+    // Log success (minimal)
+    console.log(`✅ Product fetched successfully: ${product.title}`);
+
     res.json({
       success: true,
       product: formattedProduct
     });
   } catch (error) {
-    console.error('Product fetch error:', error);
+    console.error('Product fetch unexpected error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error',
