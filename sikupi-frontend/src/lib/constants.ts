@@ -99,7 +99,7 @@ export const NAV_LINKS = [
   { href: "/", label: "Beranda" },
   { href: "/produk", label: "Produk" },
   { href: "/edukasi", label: "Edukasi" },
-  { href: "/ai-assessment", label: "AI Assessment" },
+  { href: "/ai-assessment", label: "Ampas Analyzer" },
   { href: "/chatbot", label: "Chatbot" },
 ];
 
