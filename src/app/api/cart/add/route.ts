@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { createClient } from '@supabase/supabase-js'
 import { headers } from 'next/headers'
 import type { Product } from '@/types/database'
-import { CartStorage } from '@/lib/cart-storage'
+import { CartStorage } from '@/lib/cart-storage-db'
 
 // Add to cart validation schema
 const AddToCartSchema = z.object({
@@ -83,16 +83,8 @@ export async function POST(request: NextRequest) {
     
     const productData = product as Product
     
-    // Check stock availability
-    if (productData.stock_qty < validatedData.quantity) {
-      return NextResponse.json(
-        { error: `Insufficient stock. Available: ${productData.stock_qty} ${productData.unit}` },
-        { status: 400 }
-      )
-    }
-    
     // Check if product already in cart
-    const existingItem = CartStorage.getItem(authResult.user.id, validatedData.product_id)
+    const existingItem = await CartStorage.getItem(authResult.user.id, validatedData.product_id)
     
     if (existingItem) {
       const newQuantity = existingItem.quantity + validatedData.quantity
@@ -105,22 +97,37 @@ export async function POST(request: NextRequest) {
         )
       }
       
-      // Update quantity
-      CartStorage.addItem(authResult.user.id, validatedData.product_id, productData, newQuantity)
+      // Update quantity using database storage
+      const updateResult = await CartStorage.updateItemQuantity(authResult.user.id, validatedData.product_id, newQuantity)
+      
+      if (!updateResult.success) {
+        return NextResponse.json(
+          { error: updateResult.error || 'Failed to update cart item' },
+          { status: 400 }
+        )
+      }
       
       return NextResponse.json({
         success: true,
         message: 'Cart item quantity updated',
         data: {
           product_id: validatedData.product_id,
+          product_title: existingItem.product_title,
           quantity: newQuantity,
           action: 'updated'
         }
       })
       
     } else {
-      // Add new item to cart
-      CartStorage.addItem(authResult.user.id, validatedData.product_id, productData, validatedData.quantity)
+      // Add new item to cart using database storage
+      const addResult = await CartStorage.addItem(authResult.user.id, validatedData.product_id, validatedData.quantity)
+      
+      if (!addResult.success) {
+        return NextResponse.json(
+          { error: addResult.error || 'Failed to add item to cart' },
+          { status: 400 }
+        )
+      }
       
       return NextResponse.json({
         success: true,

@@ -131,13 +131,22 @@ export async function POST(request: NextRequest) {
 
     // Prepare Biteship rates request
     const originAreaId = config.warehouse.originCityId
-    const destinationAreaId = validatedData.destination_address.area_id || 'unknown'
+    
+    // Check if destination area_id is provided, otherwise return error
+    if (!validatedData.destination_address.area_id) {
+      return NextResponse.json(
+        { error: 'destination_address.area_id is required. Please get area_id from /api/biteship/areas endpoint first.' },
+        { status: 400 }
+      )
+    }
+    
+    const destinationAreaId = validatedData.destination_address.area_id
     
     const ratesRequest = {
-      // Origin: Use warehouse coordinates or area_id
+      // Origin: Use warehouse area_id
       origin_area_id: originAreaId,
       
-      // Destination: Use provided area_id or coordinates
+      // Destination: Use provided area_id
       destination_area_id: destinationAreaId,
       
       // Couriers: Use provided list or default Indonesian couriers

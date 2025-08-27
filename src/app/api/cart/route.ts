@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { headers } from 'next/headers'
-import { CartStorage } from '@/lib/cart-storage'
+import { CartStorage } from '@/lib/cart-storage-db'
 
 // Helper function to get authenticated user
 async function getAuthenticatedUser(request: NextRequest): Promise<{ user: any; error?: string }> {
@@ -53,37 +53,33 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Get user's cart items
-    const cartItems = CartStorage.getCartItems(authResult.user.id).map(({ productId, item }) => ({
-      product_id: productId,
+    // Get user's cart items from database
+    const cartItems = await CartStorage.getCartItems(authResult.user.id)
+    const summary = await CartStorage.getCartSummary(authResult.user.id)
+    
+    // Format cart items for response
+    const formattedItems = cartItems.map(item => ({
+      product_id: item.product_id,
       product: {
-        id: item.product.id,
-        title: item.product.title,
-        price_idr: item.product.price_idr,
-        image_urls: item.product.image_urls || [],
-        coffee_type: item.product.coffee_type,
-        grind_level: item.product.grind_level,
-        condition: item.product.condition,
-        unit: item.product.unit,
-        stock_qty: item.product.stock_qty,
-        published: item.product.published,
+        id: item.product_id,
+        title: item.product_title,
+        price_idr: item.price_idr,
+        image_urls: item.image_urls || [],
+        coffee_type: item.coffee_type,
+        grind_level: item.grind_level,
+        condition: item.condition,
+        unit: item.unit,
+        stock_qty: item.stock_qty,
+        published: true, // Only published products in cart
       },
       quantity: item.quantity,
     }))
     
-    // Calculate totals
-    const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
-    const totalAmount = cartItems.reduce((sum, item) => sum + (item.product.price_idr * item.quantity), 0)
-    
     return NextResponse.json({
       success: true,
       data: {
-        cart_items: cartItems,
-        summary: {
-          total_items: totalItems,
-          total_amount_idr: totalAmount,
-          items_count: cartItems.length
-        }
+        cart_items: formattedItems,
+        summary
       }
     })
     

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@supabase/supabase-js'
 import { headers } from 'next/headers'
-import { CartStorage } from '@/lib/cart-storage'
+import { CartStorage } from '@/lib/cart-storage-db'
 
 // Update cart item validation schema
 const UpdateCartItemSchema = z.object({
@@ -76,7 +76,7 @@ export async function PUT(
     const validatedData = UpdateCartItemSchema.parse(body)
     
     // Check if item exists in cart
-    const cartItem = CartStorage.getItem(authResult.user.id, validatedParams.id)
+    const cartItem = await CartStorage.getItem(authResult.user.id, validatedParams.id)
     
     if (!cartItem) {
       return NextResponse.json(
@@ -86,22 +86,29 @@ export async function PUT(
     }
     
     // Check stock availability for the new quantity
-    if (validatedData.quantity > cartItem.product.stock_qty) {
+    if (validatedData.quantity > cartItem.stock_qty) {
       return NextResponse.json(
-        { error: `Insufficient stock. Available: ${cartItem.product.stock_qty} ${cartItem.product.unit}` },
+        { error: `Insufficient stock. Available: ${cartItem.stock_qty} ${cartItem.unit}` },
         { status: 400 }
       )
     }
     
     // Update the quantity
-    CartStorage.updateItemQuantity(authResult.user.id, validatedParams.id, validatedData.quantity)
+    const updateResult = await CartStorage.updateItemQuantity(authResult.user.id, validatedParams.id, validatedData.quantity)
+    
+    if (!updateResult.success) {
+      return NextResponse.json(
+        { error: updateResult.error || 'Failed to update cart item' },
+        { status: 400 }
+      )
+    }
     
     return NextResponse.json({
       success: true,
       message: 'Cart item updated successfully',
       data: {
         product_id: validatedParams.id,
-        product_title: cartItem.product.title,
+        product_title: cartItem.product_title,
         previous_quantity: cartItem.quantity,
         new_quantity: validatedData.quantity,
       }
@@ -146,8 +153,8 @@ export async function DELETE(
     const resolvedParams = await params
     const validatedParams = CartItemParamsSchema.parse(resolvedParams)
     
-    // Check if item exists in cart and remove it
-    const cartItem = CartStorage.getItem(authResult.user.id, validatedParams.id)
+    // Check if item exists in cart
+    const cartItem = await CartStorage.getItem(authResult.user.id, validatedParams.id)
     
     if (!cartItem) {
       return NextResponse.json(
@@ -157,14 +164,21 @@ export async function DELETE(
     }
     
     // Remove the item from cart
-    CartStorage.removeItem(authResult.user.id, validatedParams.id)
+    const removeResult = await CartStorage.removeItem(authResult.user.id, validatedParams.id)
+    
+    if (!removeResult.success) {
+      return NextResponse.json(
+        { error: removeResult.error || 'Failed to remove item from cart' },
+        { status: 400 }
+      )
+    }
     
     return NextResponse.json({
       success: true,
       message: 'Item removed from cart successfully',
       data: {
         removed_product_id: validatedParams.id,
-        removed_product_title: cartItem.product.title,
+        removed_product_title: cartItem.product_title,
         removed_quantity: cartItem.quantity,
       }
     })

@@ -37,6 +37,15 @@ export interface Product {
   updated_at: string;
 }
 
+export interface CartItem {
+  id: number;
+  user_id: string;
+  product_id: number;
+  quantity: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Order {
   id: number;
   buyer_id: string;
@@ -117,6 +126,11 @@ export interface Database {
         Row: Product;
         Insert: Omit<Product, 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<Product, 'id' | 'created_at'>>;
+      };
+      cart_items: {
+        Row: CartItem;
+        Insert: Omit<CartItem, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<CartItem, 'id' | 'created_at'>>;
       };
       orders: {
         Row: Order;
