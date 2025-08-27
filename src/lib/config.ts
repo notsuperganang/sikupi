@@ -29,7 +29,7 @@ export const config = {
     originCityId: process.env.NEXT_PUBLIC_WAREHOUSE_ORIGIN_CITY_ID!,
     contact: {
       name: 'Sikupi Warehouse',
-      phone: '+62-XXX-XXXX-XXXX',
+      phone: '+62-853-3857-3726',
       email: 'warehouse@sikupi.com',
       organization: 'Sikupi',
       address: 'Banda Aceh, Aceh, Indonesia',
