@@ -40,6 +40,29 @@ export interface RatesRequest {
   items: ShippingItem[]
 }
 
+export interface Area {
+  id: string
+  name: string
+  type: string
+  postal_code: string
+  administrative_division_level_1_name: string
+  administrative_division_level_1_type: string
+  administrative_division_level_2_name: string
+  administrative_division_level_2_type: string
+  administrative_division_level_3_name: string
+  administrative_division_level_3_type: string
+  country_name: string
+  country_code: string
+}
+
+export interface AreasResponse {
+  success: boolean
+  object: string
+  message: string
+  code: number
+  areas: Area[]
+}
+
 export interface RatesResponse {
   success: boolean
   object: string
@@ -202,6 +225,54 @@ export class BiteshipService {
   }
 
   /**
+   * Search for areas by postal code or city name (Maps API)
+   */
+  async getAreas(search: string): Promise<AreasResponse> {
+    const url = `${BITESHIP_BASE_URL}/maps/areas?countries=ID&input=${encodeURIComponent(search)}`
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': this.apiKey,
+          'Content-Type': 'application/json'
+        },
+        signal: AbortSignal.timeout(10000) // 10 second timeout
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(`Biteship API Error: ${error.error || response.statusText}`)
+      }
+
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('Biteship getAreas error:', error)
+      throw new Error(`Failed to get areas: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  /**
+   * Validate address and convert postal code to area_id
+   */
+  async validateAddress(postalCode: string): Promise<Area | null> {
+    try {
+      const response = await this.getAreas(postalCode)
+      
+      if (response.success && response.areas && response.areas.length > 0) {
+        // Return the first matching area
+        return response.areas[0]
+      }
+      
+      return null
+    } catch (error) {
+      console.error('Address validation error:', error)
+      return null
+    }
+  }
+
+  /**
    * Get shipping rates for given origin/destination and items
    */
   async getRates(request: RatesRequest): Promise<RatesResponse> {
@@ -291,9 +362,19 @@ export class BiteshipService {
    * Verify webhook signature (if Biteship provides signature verification)
    */
   verifyWebhook(signature: string, payload: string): boolean {
-    // Note: Implement if Biteship provides webhook signature verification
-    // For now, return true as basic webhook verification
-    return true
+    // Note: Biteship webhook signature verification implementation
+    // For now, basic verification - implement full HMAC if Biteship provides webhook secret
+    if (!signature || !payload) {
+      return false
+    }
+    
+    // TODO: Implement proper HMAC-SHA256 verification when Biteship provides webhook secret
+    // const expectedSignature = crypto.createHmac('sha256', config.biteship.webhookSecret)
+    //   .update(payload)
+    //   .digest('hex')
+    // return signature === expectedSignature
+    
+    return true // Basic verification for now
   }
 
   /**

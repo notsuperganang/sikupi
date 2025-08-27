@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { midtrans, type MidtransNotification } from '@/lib/midtrans'
+import { generateIdempotencyKey, isAlreadyProcessed, markAsProcessed } from '@/lib/idempotency'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,19 +15,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
     }
 
-    // Verify the signature (temporarily disabled for testing)
-    // TODO: Enable signature verification in production
-    // if (!midtrans.verifySignature(validatedNotification)) {
-    //   console.error('Invalid signature for notification:', validatedNotification.order_id)
-    //   return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
-    // }
-    console.log('⚠️  Signature verification disabled for testing')
+    // Verify the signature for production security
+    const skipSignatureVerification = process.env.NODE_ENV === 'development' && 
+                                      process.env.MIDTRANS_WEBHOOK_SECRET === 'your-midtrans-webhook-secret'
+    
+    if (!skipSignatureVerification) {
+      if (!midtrans.verifySignature(validatedNotification)) {
+        console.error('Invalid signature for notification:', validatedNotification.order_id)
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+      }
+      console.log('✅ Signature verification passed')
+    } else {
+      console.log('⚠️  Signature verification skipped for development')
+    }
 
     console.log('Processing Midtrans notification:', {
       order_id: validatedNotification.order_id,
       transaction_status: validatedNotification.transaction_status,
       fraud_status: validatedNotification.fraud_status
     })
+
+    // Check for duplicate webhook processing
+    const idempotencyKey = generateIdempotencyKey(
+      'midtrans',
+      validatedNotification.order_id,
+      validatedNotification.transaction_status
+    )
+    
+    if (isAlreadyProcessed(idempotencyKey)) {
+      console.log('⚠️  Duplicate webhook detected, skipping processing:', idempotencyKey)
+      return NextResponse.json({ 
+        success: true,
+        message: 'Duplicate webhook ignored' 
+      })
+    }
+
+    // Mark as being processed
+    markAsProcessed(idempotencyKey)
 
     // Find the order by Midtrans order ID
     const { data: order, error: orderError } = await supabaseAdmin

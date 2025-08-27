@@ -3,7 +3,41 @@ import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase'
 import { biteship } from '@/lib/biteship'
 import { config } from '@/lib/config'
-import type { Product } from '@/types/database'
+
+// In-memory rate cache (5 minutes TTL)
+interface CachedRate {
+  data: any
+  expires: number
+}
+
+const rateCache = new Map<string, CachedRate>()
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutes in milliseconds
+
+function getCacheKey(originAreaId: string, destinationAreaId: string, items: any[]): string {
+  const itemsHash = items.map(item => `${item.product_id}:${item.quantity}`).join(',')
+  return `rates:${originAreaId}:${destinationAreaId}:${itemsHash}`
+}
+
+function getCachedRates(cacheKey: string): any | null {
+  const cached = rateCache.get(cacheKey)
+  if (cached && cached.expires > Date.now()) {
+    return cached.data
+  }
+  
+  // Clean up expired entry
+  if (cached) {
+    rateCache.delete(cacheKey)
+  }
+  
+  return null
+}
+
+function setCachedRates(cacheKey: string, data: any): void {
+  rateCache.set(cacheKey, {
+    data,
+    expires: Date.now() + CACHE_TTL
+  })
+}
 
 // Request validation schema
 const RatesRequestSchema = z.object({
@@ -47,8 +81,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Type the products properly - Supabase returns an array of Product-like objects
-    const typedProducts = products as Array<Pick<Product, 'id' | 'title' | 'price_idr' | 'stock_qty'>>
+    // Type the products properly - Supabase returns an array of product objects
+    const typedProducts = products as Array<{
+      id: number
+      title: string
+      price_idr: number
+      stock_qty: number
+    }>
 
     // Validate stock and prepare shipping items
     const shippingItems = []
@@ -91,12 +130,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepare Biteship rates request
+    const originAreaId = config.warehouse.originCityId
+    const destinationAreaId = validatedData.destination_address.area_id || 'unknown'
+    
     const ratesRequest = {
       // Origin: Use warehouse coordinates or area_id
-      origin_area_id: config.warehouse.originCityId,
+      origin_area_id: originAreaId,
       
       // Destination: Use provided area_id or coordinates
-      destination_area_id: validatedData.destination_address.area_id,
+      destination_area_id: destinationAreaId,
       
       // Couriers: Use provided list or default Indonesian couriers
       couriers: validatedData.couriers || 'jne,pos,tiki,sicepat,jnt,ninja,wahana,rex,ide,lion,sap',
@@ -104,8 +146,22 @@ export async function POST(request: NextRequest) {
       items: shippingItems,
     }
 
-    // Get rates from Biteship
-    const ratesResponse = await biteship.getRates(ratesRequest)
+    // Check cache first
+    const cacheKey = getCacheKey(originAreaId, destinationAreaId, validatedData.items)
+    let ratesResponse = getCachedRates(cacheKey)
+
+    if (!ratesResponse) {
+      // Cache miss - fetch from Biteship API
+      console.log('Cache miss - fetching rates from Biteship API')
+      ratesResponse = await biteship.getRates(ratesRequest)
+      
+      // Cache the response if successful
+      if (ratesResponse.success) {
+        setCachedRates(cacheKey, ratesResponse)
+      }
+    } else {
+      console.log('Cache hit - using cached rates')
+    }
 
     if (!ratesResponse.success) {
       console.error('Biteship rates error:', ratesResponse)
@@ -116,7 +172,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Format response for frontend
-    const formattedRates = ratesResponse.pricing.map(rate => ({
+    const formattedRates = ratesResponse.pricing.map((rate: any) => ({
       company: rate.company,
       courier_code: rate.courier_code,
       service_code: rate.courier_service_code,
@@ -136,7 +192,7 @@ export async function POST(request: NextRequest) {
     }))
 
     // Sort by price (cheapest first)
-    formattedRates.sort((a, b) => a.price - b.price)
+    formattedRates.sort((a: any, b: any) => a.price - b.price)
 
     return NextResponse.json({
       success: true,

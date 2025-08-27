@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { biteship } from '@/lib/biteship'
+import { generateIdempotencyKey, isAlreadyProcessed, markAsProcessed } from '@/lib/idempotency'
 
 interface BiteshipWebhookPayload {
   id: string
@@ -85,6 +86,24 @@ export async function POST(request: NextRequest) {
       status: payload.status,
       waybill_id: payload.waybill_id,
     })
+
+    // Check for duplicate webhook processing
+    const idempotencyKey = generateIdempotencyKey(
+      'biteship',
+      payload.order_id,
+      payload.status
+    )
+    
+    if (isAlreadyProcessed(idempotencyKey)) {
+      console.log('⚠️  Duplicate webhook detected, skipping processing:', idempotencyKey)
+      return NextResponse.json({ 
+        success: true,
+        message: 'Duplicate webhook ignored' 
+      })
+    }
+
+    // Mark as being processed
+    markAsProcessed(idempotencyKey)
 
     const signature = request.headers.get('x-biteship-signature')
     if (signature) {
