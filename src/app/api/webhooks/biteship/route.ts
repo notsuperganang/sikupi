@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { biteship } from '@/lib/biteship'
 import { generateIdempotencyKey, isAlreadyProcessed, markAsProcessed } from '@/lib/idempotency'
+import { NotificationService } from '@/lib/notifications'
 
 interface BiteshipWebhookPayload {
   id: string
@@ -189,6 +190,56 @@ export async function POST(request: NextRequest) {
       order_status: statusMapping.order_status,
       waybill_id: payload.waybill_id,
     })
+
+    // Create shipping notification for customer
+    try {
+      // Get order details for notification
+      const { data: orderDetails, error: orderDetailError } = await (supabaseAdmin as any)
+        .from('orders')
+        .select('user_id, customer_name, total_amount')
+        .eq('id', internalOrderId)
+        .single()
+
+      if (!orderDetailError && orderDetails) {
+        let notificationData: any = {
+          order_id: internalOrderId,
+          status: payload.status,
+          courier: payload.courier?.company || 'Kurir',
+          tracking_number: payload.waybill_id,
+          customer_name: orderDetails.customer_name
+        }
+
+        // Send different notifications based on shipping status
+        if (payload.status.toLowerCase() === 'picked_up') {
+          await NotificationService.create({
+            user_id: orderDetails.user_id,
+            type: 'shipment_ready',
+            template_key: 'shipment_picked_up',
+            data: notificationData
+          })
+        } else if (payload.status.toLowerCase() === 'delivered') {
+          await NotificationService.create({
+            user_id: orderDetails.user_id,
+            type: 'order_update',
+            template_key: 'order_delivered',
+            data: notificationData
+          })
+        } else if (payload.status.toLowerCase() === 'confirmed') {
+          await NotificationService.create({
+            user_id: orderDetails.user_id,
+            type: 'shipment_ready',
+            title: 'Pesanan Siap Dikirim',
+            message: `Pesanan #${internalOrderId} telah dikonfirmasi oleh ${payload.courier?.company} dan akan segera dikirim.`,
+            data: notificationData
+          })
+        }
+        
+        console.log('🔔 Shipping notification sent for order:', internalOrderId)
+      }
+    } catch (notificationError) {
+      console.error('Failed to send shipping notification:', notificationError)
+      // Don't fail the webhook for notification errors
+    }
 
     if (payload.history && payload.history.length > 0) {
       const latestHistory = payload.history[0]

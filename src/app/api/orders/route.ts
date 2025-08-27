@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { headers } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import { CartStorage } from '@/lib/cart-storage-db'
+import { NotificationService } from '@/lib/notifications'
 import type { OrderStatus } from '@/types/database'
 
 // Create order validation schema
@@ -143,6 +144,47 @@ export async function POST(request: NextRequest) {
     if (!clearResult.success) {
       console.error('Failed to clear cart after order creation:', clearResult.error)
       // Continue anyway since order was created successfully
+    }
+
+    // Send admin notification for new order
+    try {
+      // Get all admin users
+      const { data: adminUsers, error: adminError } = await (supabaseAdmin as any)
+        .from('profiles')
+        .select('id, full_name')
+        .eq('role', 'admin')
+
+      if (!adminError && adminUsers && adminUsers.length > 0) {
+        // Get order details for notification
+        const { data: orderDetails, error: orderDetailError } = await (supabaseAdmin as any)
+          .from('orders')
+          .select('customer_name, total_amount')
+          .eq('id', result.order_id)
+          .single()
+
+        if (!orderDetailError && orderDetails) {
+          // Send notification to all admins
+          for (const admin of adminUsers) {
+            await NotificationService.create({
+              user_id: admin.id,
+              type: 'admin_alert',
+              title: 'Pesanan Baru Masuk!',
+              message: `Pesanan baru #${result.order_id} dari ${orderDetails.customer_name}. Total: Rp ${result.total_idr?.toLocaleString('id-ID')}`,
+              data: {
+                order_id: result.order_id,
+                customer_name: orderDetails.customer_name,
+                total: result.total_idr,
+                items_count: orderItems.length,
+                admin_action_url: `/admin/orders/${result.order_id}`
+              }
+            })
+          }
+          console.log('🔔 Admin notifications sent for new order:', result.order_id)
+        }
+      }
+    } catch (notificationError) {
+      console.error('Failed to send admin notification:', notificationError)
+      // Don't fail the order creation for notification errors
     }
 
     // Return the created order details

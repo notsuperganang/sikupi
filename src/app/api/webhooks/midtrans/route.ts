@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { midtrans, type MidtransNotification } from '@/lib/midtrans'
 import { generateIdempotencyKey, isAlreadyProcessed, markAsProcessed } from '@/lib/idempotency'
+import { NotificationService } from '@/lib/notifications'
 
 export async function POST(request: NextRequest) {
   try {
@@ -108,6 +109,42 @@ export async function POST(request: NextRequest) {
     // Handle post-payment actions
     if (newOrderStatus === 'paid' && (order as any).status !== 'paid') {
       await handleSuccessfulPayment(order, validatedNotification)
+      
+      // Create payment confirmation notification for customer
+      try {
+        await NotificationService.create({
+          user_id: (order as any).user_id,
+          type: 'payment_confirmed',
+          template_key: 'payment_confirmed',
+          data: {
+            order_id: (order as any).id,
+            total: (order as any).total_amount,
+            customer_name: (order as any).customer_name
+          }
+        })
+        console.log('Payment confirmation notification sent for order:', (order as any).id)
+      } catch (notificationError) {
+        console.error('Failed to send payment notification:', notificationError)
+        // Don't fail the webhook for notification errors
+      }
+    } else if (newOrderStatus === 'cancelled' && (order as any).status !== 'cancelled') {
+      // Create payment cancellation notification for customer
+      try {
+        await NotificationService.create({
+          user_id: (order as any).user_id,
+          type: 'order_update',
+          title: 'Pembayaran Dibatalkan',
+          message: `Pembayaran untuk pesanan #${(order as any).id} telah dibatalkan. Silakan coba lagi atau hubungi customer service.`,
+          data: {
+            order_id: (order as any).id,
+            status: 'cancelled',
+            total: (order as any).total_amount
+          }
+        })
+        console.log('Payment cancellation notification sent for order:', (order as any).id)
+      } catch (notificationError) {
+        console.error('Failed to send cancellation notification:', notificationError)
+      }
     }
 
     console.log('Successfully processed Midtrans notification for order:', (order as any).id)
