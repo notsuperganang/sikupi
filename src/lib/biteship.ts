@@ -308,6 +308,8 @@ export class BiteshipService {
     const url = `${BITESHIP_BASE_URL}/orders`
     
     try {
+      console.log('Creating Biteship order:', JSON.stringify(request, null, 2))
+      
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -319,15 +321,99 @@ export class BiteshipService {
 
       if (!response.ok) {
         const error = await response.json()
+        console.error('Biteship order creation failed:', error)
         throw new Error(`Biteship API Error: ${error.error || response.statusText}`)
       }
 
       const data = await response.json()
+      console.log('Biteship order created successfully:', {
+        id: data.id,
+        order_id: data.order_id,
+        status: data.status
+      })
+      
       return data
     } catch (error) {
       console.error('Biteship createOrder error:', error)
       throw new Error(`Failed to create shipping order: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
+  }
+
+  /**
+   * Create order from Sikupi order data
+   */
+  async createOrderFromSikupiOrder(orderData: {
+    orderId: number;
+    customerName: string;
+    customerPhone: string;
+    customerEmail: string;
+    shippingAddress: any;
+    courierCompany: string;
+    courierType: string;
+    items: Array<{
+      name: string;
+      quantity: number;
+      value: number;
+      weight: number; // in grams
+    }>;
+    totalValue: number;
+  }): Promise<CreateOrderResponse> {
+    
+    const { warehouse } = config
+    
+    // Prepare shipping items for Biteship
+    const biteshipItems: ShippingItem[] = orderData.items.map(item => ({
+      name: item.name,
+      description: `${item.name} - ${item.quantity} unit`,
+      value: Math.round(item.value),
+      length: 20, // cm - standard package size
+      width: 15,  // cm
+      height: 10, // cm  
+      weight: item.weight,
+      sku: `ORDER-${orderData.orderId}`
+    }))
+
+    // Create Biteship order request
+    const biteshipRequest: CreateOrderRequest = {
+      // Shipper details (your warehouse)
+      shipper_contact_name: warehouse.contact.name,
+      shipper_contact_phone: warehouse.contact.phone,
+      shipper_contact_email: warehouse.contact.email,
+      shipper_organization: warehouse.contact.organization,
+      
+      // Origin (your warehouse)
+      origin_contact_name: warehouse.contact.name,
+      origin_contact_phone: warehouse.contact.phone,
+      origin_address: warehouse.contact.address,
+      origin_postal_code: warehouse.contact.postalCode.toString(),
+      origin_note: `Sikupi Order #${orderData.orderId}`,
+      
+      // Destination (customer)
+      destination_contact_name: orderData.customerName,
+      destination_contact_phone: orderData.customerPhone,
+      destination_contact_email: orderData.customerEmail,
+      destination_address: `${orderData.shippingAddress.address}, ${orderData.shippingAddress.city}`,
+      destination_postal_code: orderData.shippingAddress.postal_code,
+      destination_note: `Deliver to: ${orderData.customerName}`,
+      
+      // Shipping details
+      courier_company: orderData.courierCompany.toLowerCase(),
+      courier_type: orderData.courierType.toLowerCase(),
+      delivery_type: 'now', // Immediate delivery
+      order_note: `Sikupi marketplace order #${orderData.orderId}`,
+      
+      // Items
+      items: biteshipItems,
+      
+      // Metadata for tracking
+      metadata: {
+        sikupi_order_id: orderData.orderId,
+        platform: 'sikupi-marketplace',
+        total_value: orderData.totalValue
+      }
+    }
+
+    return this.createOrder(biteshipRequest)
   }
 
   /**

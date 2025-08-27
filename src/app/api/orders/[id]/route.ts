@@ -166,9 +166,19 @@ export async function GET(
         next_actions.push({
           action: 'track_shipment',
           label: 'Track Package',
-          url: orderData.tracking_number ? `https://tracking.example.com/${orderData.tracking_number}` : `/orders/${orderData.id}/tracking`,
+          url: orderData.tracking_number ? `/api/orders/${orderData.id}/tracking` : `/orders/${orderData.id}/tracking`,
           type: 'primary'
         })
+        
+        // Add external tracking link if available
+        if (orderData.tracking_number) {
+          next_actions.push({
+            action: 'external_tracking',
+            label: 'Track on Courier Website',
+            url: getExternalTrackingUrl(orderData.courier_company, orderData.tracking_number),
+            type: 'secondary'
+          })
+        }
         break
       case 'completed':
         next_actions.push({
@@ -278,4 +288,25 @@ export async function GET(
       { status: 500 }
     )
   }
+}
+
+/**
+ * Get external tracking URL based on courier company
+ */
+function getExternalTrackingUrl(courier: string | null, trackingNumber: string): string {
+  if (!courier || !trackingNumber) {
+    return '#'
+  }
+  
+  const courierUrls: Record<string, string> = {
+    'jne': `https://www.jne.co.id/id/tracking/trace/${trackingNumber}`,
+    'pos': `https://www.posindonesia.co.id/id/tracking/${trackingNumber}`,
+    'tiki': `https://www.tiki.id/id/tracking?tracking_number=${trackingNumber}`,
+    'sicepat': `https://www.sicepat.com/checkAwb/${trackingNumber}`,
+    'jnt': `https://www.jet.co.id/tracking/${trackingNumber}`,
+    'ninja': `https://www.ninjaxpress.co/en-id/tracking?id=${trackingNumber}`
+  }
+  
+  const courierKey = courier.toLowerCase()
+  return courierUrls[courierKey] || `https://www.google.com/search?q=${courier}+tracking+${trackingNumber}`
 }
