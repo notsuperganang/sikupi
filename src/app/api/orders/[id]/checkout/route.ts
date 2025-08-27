@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import { midtrans } from '@/lib/midtrans'
 import { formatCurrency } from '@/lib/utils'
+import { NotificationHelpers } from '@/lib/notifications'
 
 // Route parameter validation
 const OrderParamsSchema = z.object({
@@ -217,6 +218,19 @@ export async function POST(
     if (updateError) {
       console.error('Failed to update order with Midtrans details:', updateError)
       // Continue anyway, as the transaction was created successfully
+    }
+
+    // Send order creation notification to customer
+    try {
+      await NotificationHelpers.orderCreated(
+        authResult.user.id,
+        orderData.id,
+        orderData.total_idr
+      )
+      console.log('🔔 Order creation notification sent for order:', orderData.id)
+    } catch (notificationError) {
+      console.error('Failed to send order creation notification:', notificationError)
+      // Don't fail checkout for notification errors
     }
 
     // Return success response

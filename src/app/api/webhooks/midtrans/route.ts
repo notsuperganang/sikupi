@@ -112,16 +112,15 @@ export async function POST(request: NextRequest) {
       
       // Create payment confirmation notification for customer
       try {
-        await NotificationService.create({
-          user_id: (order as any).user_id,
-          type: 'payment_confirmed',
-          template_key: 'payment_confirmed',
-          data: {
+        await NotificationService.createFromTemplate(
+          'payment_confirmed',
+          (order as any).buyer_id,
+          {
             order_id: (order as any).id,
             total: (order as any).total_amount,
             customer_name: (order as any).customer_name
           }
-        })
+        )
         console.log('Payment confirmation notification sent for order:', (order as any).id)
       } catch (notificationError) {
         console.error('Failed to send payment notification:', notificationError)
@@ -131,7 +130,7 @@ export async function POST(request: NextRequest) {
       // Create payment cancellation notification for customer
       try {
         await NotificationService.create({
-          user_id: (order as any).user_id,
+          user_id: (order as any).buyer_id,
           type: 'order_update',
           title: 'Pembayaran Dibatalkan',
           message: `Pembayaran untuk pesanan #${(order as any).id} telah dibatalkan. Silakan coba lagi atau hubungi customer service.`,

@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
       // Get order details for notification
       const { data: orderDetails, error: orderDetailError } = await (supabaseAdmin as any)
         .from('orders')
-        .select('user_id, customer_name, total_amount')
+        .select('buyer_id, customer_name, total_amount')
         .eq('id', internalOrderId)
         .single()
 
@@ -210,26 +210,37 @@ export async function POST(request: NextRequest) {
         }
 
         // Send different notifications based on shipping status
-        if (payload.status.toLowerCase() === 'picked_up') {
-          await NotificationService.create({
-            user_id: orderDetails.user_id,
-            type: 'shipment_ready',
-            template_key: 'shipment_picked_up',
-            data: notificationData
-          })
+        if (payload.status.toLowerCase() === 'picked_up' || payload.status.toLowerCase() === 'on_process') {
+          // Use order_packed template for picked up/processing
+          await NotificationService.createFromTemplate(
+            'order_packed',
+            orderDetails.buyer_id,
+            notificationData
+          )
         } else if (payload.status.toLowerCase() === 'delivered') {
+          // Use order_completed template for delivery
+          await NotificationService.createFromTemplate(
+            'order_completed',
+            orderDetails.buyer_id,
+            notificationData
+          )
+        } else if (payload.status.toLowerCase() === 'confirmed' || payload.status.toLowerCase() === 'in_transit') {
+          // Use order_shipped template for confirmed/in transit
+          await NotificationService.createFromTemplate(
+            'order_shipped',
+            orderDetails.buyer_id,
+            {
+              ...notificationData,
+              courier: payload.courier?.company || 'Kurir',
+              tracking_number: payload.waybill_id || 'Sedang diproses'
+            }
+          )
+        } else if (payload.status.toLowerCase() === 'cancelled' || payload.status.toLowerCase() === 'returned') {
           await NotificationService.create({
-            user_id: orderDetails.user_id,
+            user_id: orderDetails.buyer_id,
             type: 'order_update',
-            template_key: 'order_delivered',
-            data: notificationData
-          })
-        } else if (payload.status.toLowerCase() === 'confirmed') {
-          await NotificationService.create({
-            user_id: orderDetails.user_id,
-            type: 'shipment_ready',
-            title: 'Pesanan Siap Dikirim',
-            message: `Pesanan #${internalOrderId} telah dikonfirmasi oleh ${payload.courier?.company} dan akan segera dikirim.`,
+            title: 'Pengiriman Bermasalah',
+            message: `Pengiriman pesanan #${internalOrderId} mengalami kendala (${payload.status}). Tim customer service akan menghubungi Anda.`,
             data: notificationData
           })
         }

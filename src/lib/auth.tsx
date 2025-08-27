@@ -106,7 +106,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string, 
     userData: { full_name: string; phone: string }
   ) => {
-    const { error } = await supabase.auth.signUp({
+    // Step 1: Create auth user
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -118,6 +119,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
     
     if (error) throw error
+
+    // Step 2: Create profile if user was created successfully
+    if (data.user) {
+      try {
+        const { data: profileCreated, error: profileError } = await (supabase as any).rpc('handle_new_user', {
+          p_user_id: data.user.id,
+          p_email: email,
+          p_full_name: userData.full_name
+        })
+
+        if (profileError) {
+          console.error('Failed to create user profile:', profileError)
+          // Don't throw error - user auth was successful, profile creation can be retried
+          console.warn('User registered but profile creation failed - profile can be created later')
+        } else if (profileCreated) {
+          console.log('✅ Profile created successfully for user:', email)
+        } else {
+          console.log('ℹ️ Profile already exists for user:', email)
+        }
+      } catch (profileException) {
+        console.error('Profile creation exception:', profileException)
+        // Continue - don't fail registration for profile issues
+      }
+    }
   }
 
   const signOut = async () => {

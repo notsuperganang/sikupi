@@ -62,6 +62,52 @@ function renderTemplate(template: string, data: NotificationData): string {
 
 // Notification service class
 export class NotificationService {
+  // Validate user has valid profile for notifications
+  static async validateUser(userId: string): Promise<{
+    valid: boolean
+    user_exists: boolean
+    profile_exists: boolean
+    has_role: boolean
+    role: string | null
+    error_message: string | null
+  }> {
+    try {
+      const { data, error } = await (supabaseAdmin as any)
+        .rpc('validate_user_for_notifications', { p_user_id: userId })
+
+      if (error) {
+        console.error('[Notifications] User validation error:', error)
+        return {
+          valid: false,
+          user_exists: false,
+          profile_exists: false,
+          has_role: false,
+          role: null,
+          error_message: 'Validation function failed'
+        }
+      }
+
+      return data[0] || {
+        valid: false,
+        user_exists: false,
+        profile_exists: false,
+        has_role: false,
+        role: null,
+        error_message: 'No validation result'
+      }
+    } catch (error) {
+      console.error('[Notifications] User validation exception:', error)
+      return {
+        valid: false,
+        user_exists: false,
+        profile_exists: false,
+        has_role: false,
+        role: null,
+        error_message: 'Exception during validation'
+      }
+    }
+  }
+
   // Create a notification using a template
   static async createFromTemplate(
     templateKey: string, 
@@ -69,6 +115,13 @@ export class NotificationService {
     data: NotificationData = {}
   ): Promise<number | null> {
     try {
+      // Validate user first
+      const validation = await this.validateUser(userId)
+      if (!validation.valid) {
+        console.warn(`[Notifications] Skipping notification for invalid user ${userId}: ${validation.error_message}`)
+        return null
+      }
+
       // Get template from database
       const { data: template, error: templateError } = await (supabaseAdmin as any)
         .from('notification_templates')
@@ -108,7 +161,14 @@ export class NotificationService {
         return await this.createFromTemplate(params.template_key, params.user_id, params.data)
       }
 
-      // Direct creation
+      // Validate user first (unless it's a direct creation with explicit override)
+      const validation = await this.validateUser(params.user_id)
+      if (!validation.valid) {
+        console.warn(`[Notifications] Skipping direct notification for invalid user ${params.user_id}: ${validation.error_message}`)
+        return null
+      }
+
+      // Direct creation using enhanced stored procedure
       const { data: result, error } = await (supabaseAdmin as any)
         .rpc('create_notification', {
           p_user_id: params.user_id,
@@ -123,7 +183,13 @@ export class NotificationService {
         return null
       }
 
-      console.log(`[Notifications] Created notification ${result} for user ${params.user_id}`)
+      // Handle null result (user validation failed in stored procedure)
+      if (result === null) {
+        console.warn(`[Notifications] Notification creation returned null for user ${params.user_id} - likely profile issue`)
+        return null
+      }
+
+      console.log(`[Notifications] Created notification ${result} for user ${params.user_id} (role: ${validation.role})`)
       
       // Trigger SSE update (handled by separate endpoint)
       this.triggerSSEUpdate(params.user_id)

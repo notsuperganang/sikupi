@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase'
 import { requireAdminAuth, adminResponse, adminErrorResponse, AdminAuthResult } from '@/lib/admin-auth'
+import { NotificationHelpers } from '@/lib/notifications'
 import type { OrderStatus } from '@/types/database'
 
 // Valid status transitions
@@ -108,6 +109,49 @@ async function handleUpdateOrderStatus(
     
     // Log admin action for audit trail
     console.log(`Admin ${adminAuth.profile?.full_name} updated order ${validatedParams.id} from ${currentStatus} to ${newStatus}`)
+    
+    // Send customer notification for status changes (if enabled)
+    if (validatedData.notify_customer) {
+      try {
+        switch (newStatus) {
+          case 'packed':
+            await NotificationHelpers.orderPacked(orderData.buyer_id, validatedParams.id)
+            break
+          case 'shipped':
+            await NotificationHelpers.orderShipped(
+              orderData.buyer_id,
+              validatedParams.id,
+              'Kurir',
+              'Akan tersedia setelah pickup'
+            )
+            break
+          case 'completed':
+            await NotificationHelpers.orderCompleted(orderData.buyer_id, validatedParams.id)
+            break
+          case 'cancelled':
+            await NotificationHelpers.custom(
+              orderData.buyer_id,
+              'order_update',
+              'Pesanan Dibatalkan',
+              `Pesanan #${validatedParams.id} telah dibatalkan oleh admin. Silakan hubungi customer service jika ada pertanyaan.`,
+              {
+                order_id: validatedParams.id,
+                status: 'cancelled',
+                total: orderData.total_idr,
+                cancelled_by: 'admin'
+              }
+            )
+            break
+        }
+        
+        if (['packed', 'shipped', 'completed', 'cancelled'].includes(newStatus)) {
+          console.log(`🔔 Customer notification sent for order ${validatedParams.id} status change: ${newStatus}`)
+        }
+      } catch (notificationError) {
+        console.error('Failed to send customer notification:', notificationError)
+        // Don't fail status update for notification errors
+      }
+    }
     
     // Get updated order details
     const { data: updatedOrder, error: refetchError } = await supabaseAdmin
