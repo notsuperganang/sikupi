@@ -122,25 +122,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Step 2: Create profile if user was created successfully
     if (data.user) {
-      try {
-        const { data: profileCreated, error: profileError } = await (supabase as any).rpc('handle_new_user', {
-          p_user_id: data.user.id,
-          p_email: email,
-          p_full_name: userData.full_name
-        })
+      let retryCount = 0
+      const maxRetries = 2
+      
+      while (retryCount <= maxRetries) {
+        try {
+          const { data: profileCreated, error: profileError } = await (supabase as any).rpc('handle_new_user', {
+            p_user_id: data.user.id,
+            p_email: email,
+            p_full_name: userData.full_name
+          })
 
-        if (profileError) {
-          console.error('Failed to create user profile:', profileError)
-          // Don't throw error - user auth was successful, profile creation can be retried
-          console.warn('User registered but profile creation failed - profile can be created later')
-        } else if (profileCreated) {
-          console.log('✅ Profile created successfully for user:', email)
-        } else {
-          console.log('ℹ️ Profile already exists for user:', email)
+          if (profileError) {
+            if (retryCount < maxRetries) {
+              console.warn(`Profile creation failed (attempt ${retryCount + 1}), retrying...`, profileError)
+              retryCount++
+              await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second
+              continue
+            } else {
+              console.error('Failed to create user profile after retries:', profileError)
+              // Don't throw error - user auth was successful, profile creation can be retried later
+              console.warn('User registered but profile creation failed - profile can be created later')
+            }
+          } else if (profileCreated) {
+            console.log('✅ Profile created successfully for user:', email)
+          } else {
+            console.log('ℹ️ Profile already exists for user:', email)
+          }
+          break // Success or final failure, exit retry loop
+        } catch (profileException) {
+          if (retryCount < maxRetries) {
+            console.warn(`Profile creation exception (attempt ${retryCount + 1}), retrying...`, profileException)
+            retryCount++
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            continue
+          } else {
+            console.error('Profile creation exception after retries:', profileException)
+            break
+          }
         }
-      } catch (profileException) {
-        console.error('Profile creation exception:', profileException)
-        // Continue - don't fail registration for profile issues
       }
     }
   }
