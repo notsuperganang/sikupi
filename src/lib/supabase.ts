@@ -1,16 +1,37 @@
 import { createClient } from '@supabase/supabase-js'
 import { Database, Profile } from '@/types/database'
 
+// Get environment variables with fallback for debugging
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+if (!supabaseUrl) {
+  throw new Error('Missing environment variable: NEXT_PUBLIC_SUPABASE_URL')
+}
+
+if (!supabaseAnonKey) {
+  throw new Error('Missing environment variable: NEXT_PUBLIC_SUPABASE_ANON_KEY')
+}
+
 // Client-side Supabase instance (uses anon key, respects RLS)
 export const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  supabaseUrl,
+  supabaseAnonKey
 )
 
+// Get service role key (only available server-side)
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+// Only warn if we're running on the server-side (Node.js environment)
+if (!supabaseServiceRoleKey && typeof window === 'undefined') {
+  console.warn('Missing environment variable: SUPABASE_SERVICE_ROLE_KEY - Admin functions will not work')
+}
+
 // Server-side Supabase instance (uses service role key, bypasses RLS)
+// Note: On client-side, this will use anon key, which is fine for non-admin operations
 export const supabaseAdmin = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  supabaseUrl,
+  supabaseServiceRoleKey || supabaseAnonKey, // Fallback to anon key on client-side
   {
     auth: {
       autoRefreshToken: false,

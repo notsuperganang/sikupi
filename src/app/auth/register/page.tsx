@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Separator } from '@/components/ui/separator'
+import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton'
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -80,13 +82,32 @@ export default function RegisterPage() {
             Buat akun baru untuk mulai berbelanja
           </CardDescription>
         </CardHeader>
+        <CardContent className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
+          {/* Google Signup Button */}
+          <GoogleLoginButton 
+            mode="signup"
+            onError={(error) => setError(error)}
+          />
+          
+          {/* Separator */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <Separator />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-muted-foreground">atau</span>
+            </div>
+          </div>
+        </CardContent>
+
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+          <CardContent className="space-y-4 pt-0">
             
             <div className="space-y-2">
               <Label htmlFor="full_name">Nama Lengkap</Label>
