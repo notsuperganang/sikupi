@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:products": "node scripts/seed-products.js",
+    "seed:add-samples": "node scripts/add-sample-products.js",
+    "seed": "npm run seed:add-samples"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -25,6 +28,7 @@
     "dotenv": "^17.2.1",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.542.0",
+    "mini-svg-data-uri": "^1.4.4",
     "motion": "^12.23.12",
     "nanoid": "^5.1.5",
     "next": "15.5.0",
