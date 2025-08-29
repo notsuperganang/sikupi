@@ -32,7 +32,7 @@ export default function OrderSummary({
           <ShoppingBag className="h-5 w-5 text-amber-600" />
           <h3 className="font-semibold">Pesanan Anda ({items.length})</h3>
         </div>
-        
+
         <div className="space-y-3 max-h-64 overflow-y-auto">
           {items.map((item) => (
             <div key={item.id} className="flex items-start gap-3">
@@ -45,7 +45,7 @@ export default function OrderSummary({
                   height={48}
                 />
               </div>
-              
+
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-sm text-stone-900 line-clamp-2">
                   {item.product_title}
@@ -69,7 +69,7 @@ export default function OrderSummary({
             <MapPin className="h-5 w-5 text-amber-600" />
             <h3 className="font-semibold">Alamat Pengiriman</h3>
           </div>
-          
+
           <div className="space-y-3">
             {/* Recipient Info */}
             <div className="bg-stone-50 rounded-lg p-3">
@@ -110,11 +110,14 @@ export default function OrderSummary({
 
             {/* Area ID (for shipping reference) */}
             {shippingAddress.area_id && (
-              <div className="border-t border-stone-200 pt-3">
-                <p className="text-xs text-stone-500">
-                  Area ID: <span className="font-mono text-stone-600">{shippingAddress.area_id}</span>
-                  <span className="ml-2 text-green-600">✓ Tervalidasi Biteship</span>
-                </p>
+              <div className="text-xs text-stone-500">
+                <div>
+                  Area ID:{" "}
+                  <span className="font-mono text-stone-600">
+                    {shippingAddress.area_id}
+                  </span>
+                </div>
+                <div className="text-green-600">✓ Tervalidasi Biteship</div>
               </div>
             )}
 
@@ -138,7 +141,7 @@ export default function OrderSummary({
             <Truck className="h-5 w-5 text-amber-600" />
             <h3 className="font-semibold">Pengiriman</h3>
           </div>
-          
+
           <div className="space-y-2">
             <div className="flex justify-between items-start">
               <div>
@@ -156,7 +159,7 @@ export default function OrderSummary({
                 {formatRupiah(selectedCourier.price)}
               </p>
             </div>
-            
+
             {selectedCourier.description && (
               <p className="text-xs text-stone-500 pt-2 border-t border-stone-200">
                 {selectedCourier.description}
@@ -169,7 +172,7 @@ export default function OrderSummary({
       {/* Price Breakdown */}
       <Card className="p-4">
         <h3 className="font-semibold mb-4">Ringkasan Pembayaran</h3>
-        
+
         <div className="space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-stone-600">
@@ -179,14 +182,14 @@ export default function OrderSummary({
               {formatRupiah(totals.subtotal)}
             </span>
           </div>
-          
+
           {totals.discount > 0 && (
             <div className="flex justify-between text-sm text-green-600">
               <span>Diskon</span>
               <span>-{formatRupiah(totals.discount)}</span>
             </div>
           )}
-          
+
           {selectedCourier ? (
             <div className="flex justify-between text-sm">
               <span className="text-stone-600">Ongkir</span>
@@ -200,9 +203,9 @@ export default function OrderSummary({
               <span>Pilih kurir dulu</span>
             </div>
           )}
-          
+
           <Separator />
-          
+
           <div className="flex justify-between font-semibold text-base">
             <span className="text-stone-900">Total</span>
             <span className="text-amber-700">
@@ -223,7 +226,7 @@ export default function OrderSummary({
             <p>• Produk ramah lingkungan 100%</p>
           </div>
         </div>
-        
+
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <div className="text-xs text-blue-700 space-y-1">
             <p className="font-medium text-blue-800 mb-1">
