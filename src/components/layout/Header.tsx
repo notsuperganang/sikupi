@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { ShoppingCart, User, LogOut, Package, UserCircle, Smile } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useCart } from '@/hooks/useCart'
+import { useCartDrawer } from '@/lib/cart-context'
 import { 
   Navbar,
   NavBody,
@@ -22,6 +23,7 @@ const Header = () => {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const { user, profile, loading, signOut } = useAuth()
   const { cart } = useCart()
+  const { openDrawer } = useCartDrawer()
 
   // Navigation items - Indonesian copy
   const navItems = [
@@ -83,7 +85,12 @@ const Header = () => {
           <div className="relative z-20 flex items-center space-x-3">
             {/* Cart Button */}
             <NavbarButton 
-              href="/cart"
+              as="button"
+              type="button"
+              onClick={() => {
+                console.log('🖱️ Cart button clicked in header')
+                openDrawer()
+              }}
               variant="secondary"
               className="relative px-3 py-2"
               aria-label="Buka keranjang"
@@ -171,7 +178,12 @@ const Header = () => {
             <div className="flex items-center space-x-2">
               {/* Mobile Cart */}
               <NavbarButton 
-                href="/cart"
+                as="button"
+                type="button"
+                onClick={() => {
+                  console.log('🖱️ Mobile cart button clicked')
+                  openDrawer()
+                }}
                 variant="secondary"
                 className="relative px-2 py-2"
                 aria-label="Buka keranjang"

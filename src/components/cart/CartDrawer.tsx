@@ -5,13 +5,21 @@ import React from 'react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { useCart } from '@/hooks/useCart'
+import { useCartDrawer } from '@/lib/cart-context'
 import CartLineItem from './CartLineItem'
 import EmptyCart from './EmptyCart'
 import FreeShippingStrip from './FreeShippingStrip'
 import { ArrowRight } from 'lucide-react'
 
 export default function CartDrawer() {
-  const { cart, isDrawerOpen, closeDrawer, isLoading, clearCart, isClearing } = useCart()
+  const { cart, isLoading, clearCart, isClearing } = useCart()
+  const { isDrawerOpen, closeDrawer } = useCartDrawer()
+  
+  // Debug logging
+  React.useEffect(() => {
+    console.log('🎭 CartDrawer rendered, isDrawerOpen:', isDrawerOpen)
+    console.log('🎭 Full cart state:', { isDrawerOpen, cart: !!cart })
+  }, [isDrawerOpen, cart])
 
   const hasItems = (cart?.items?.length ?? 0) > 0
   const itemCount = cart?.totals?.itemCount ?? 0
@@ -30,8 +38,6 @@ export default function CartDrawer() {
 
   const handleContinueShopping = () => {
     closeDrawer()
-    // Navigate to products
-    window.location.href = '/products'
   }
 
   const handleClearCart = () => {

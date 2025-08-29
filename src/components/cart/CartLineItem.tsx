@@ -2,12 +2,11 @@
 'use client'
 
 import React, { useState } from 'react'
-import Image from 'next/image'
+import { ProductImage } from '@/components/ui/fallback-image'
 import { Minus, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatRupiah } from '@/lib/currency'
-import { getImageProps } from '@/lib/images'
 import { useCart, getQuantityLimits } from '@/hooks/useCart'
 import type { CartItemWithProduct } from '@/server/cart-adapter'
 
@@ -22,9 +21,6 @@ export default function CartLineItem({ item, onRemove }: CartLineItemProps) {
 
   // Get quantity limits based on product category (assume ampas_kopi for coffee products)
   const limits = getQuantityLimits('ampas_kopi') // Default to ampas_kopi limits
-  
-  const imageUrl = item.image_urls?.[0] || '/image-asset/coffee-grounds-others.jpg'
-  const imageProps = getImageProps(imageUrl, item.product_title)
 
   const handleQuantityChange = (newQuantity: number) => {
     if (newQuantity < limits.min || newQuantity > limits.max) return
@@ -56,13 +52,13 @@ export default function CartLineItem({ item, onRemove }: CartLineItemProps) {
       {/* Product Image */}
       <div className="flex-shrink-0">
         <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-stone-100">
-          <Image
-            src={imageProps.src}
-            alt={imageProps.alt}
+          <ProductImage
+            src={item.image_urls}
+            alt={item.product_title}
             fill
             className="object-cover"
             sizes="56px"
-            onError={imageProps.onError}
+            fallbackSrc="/image-asset/coffee-grounds-others.jpg"
           />
         </div>
       </div>

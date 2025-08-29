@@ -1,6 +1,7 @@
 // Main cart page with RSC and client integration
 import React from 'react'
 import { Metadata } from 'next'
+import Link from 'next/link'
 import { getUser } from '@/lib/supabase'
 import { getActiveCart } from '@/server/cart-adapter'
 import CartClient from '@/components/cart/CartClient'
@@ -33,9 +34,9 @@ export default async function CartPage() {
       <div className="bg-white border-b border-stone-200">
         <div className="container mx-auto px-4 py-3">
           <nav className="flex items-center space-x-2 text-sm text-stone-600">
-            <a href="/" className="hover:text-amber-800 transition-colors">
+            <Link href="/" className="hover:text-amber-800 transition-colors">
               Home
-            </a>
+            </Link>
             <span>›</span>
             <span className="text-amber-800 font-medium">Keranjang</span>
           </nav>

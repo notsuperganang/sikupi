@@ -16,6 +16,8 @@ import {
   EmptyState, 
   LoadMoreError 
 } from './ProductErrorBoundary'
+import { useCart } from '@/hooks/useCart'
+import { useCartDrawer } from '@/lib/cart-context'
 import { 
   searchParamsToFilters, 
   filtersToSearchParams,
@@ -112,10 +114,20 @@ export function ProductListingClient({
     setIsQuickViewOpen(true)
   }
 
+  const { addItem, isAdding } = useCart()
+  const { openDrawer } = useCartDrawer()
+
   const handleAddToCart = (productId: string, quantity: number = 1) => {
-    // TODO: Implement add to cart functionality
-    console.log('Add to cart:', productId, quantity)
-    // Here you would typically call an API or update cart state
+    const product = products.find(p => p.id === productId)
+    if (!product) return
+    addItem({
+      productId: parseInt(product.id),
+      quantity,
+      productTitle: product.title,
+      priceIdr: product.price
+    })
+    // Open drawer shortly after optimistic update
+    setTimeout(() => openDrawer(), 250)
   }
 
   const handleLoadMore = () => {

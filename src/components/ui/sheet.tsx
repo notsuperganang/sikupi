@@ -24,18 +24,26 @@ export function Sheet({ open, onOpenChange, children }: SheetProps) {
     }
   }, [open])
 
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-50">
+    <div 
+      className={`fixed inset-0 z-50 transition-opacity duration-300 ${
+        open ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      }`}
+    >
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/50"
+        className={`fixed inset-0 bg-black/50 transition-opacity duration-300 ${
+          open ? 'opacity-100' : 'opacity-0'
+        }`}
         onClick={() => onOpenChange(false)}
       />
       
       {/* Sheet */}
-      <div className="fixed inset-y-0 right-0 z-50 h-full w-full sm:max-w-sm border-l bg-white shadow-lg">
+      <div 
+        className={`fixed inset-y-0 right-0 z-50 h-full w-full sm:max-w-sm border-l bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
+          open ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
         {children}
       </div>
     </div>

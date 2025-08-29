@@ -12,12 +12,7 @@ import type {
   CartItemWithProduct
 } from '@/server/cart-adapter'
 
-// Simple toast replacement for now
-const toast = {
-  success: (message: string) => console.log('✅', message),
-  error: (message: string) => console.error('❌', message),
-  warning: (message: string) => console.warn('⚠️', message)
-}
+import { useToast } from '@/lib/toast-context'
 
 // Import server functions dynamically to avoid SSR issues
 const importCartAdapter = async () => {
@@ -32,20 +27,11 @@ interface GuestCartItem {
   addedAt: number
 }
 
-// Hook state interface
-interface UseCartState {
-  isDrawerOpen: boolean
-  isLoading: boolean
-}
-
 export function useCart() {
   const [user, setUser] = useState<{ id: string } | null>(null)
-  const [state, setState] = useState<UseCartState>({
-    isDrawerOpen: false,
-    isLoading: false
-  })
   
   const queryClient = useQueryClient()
+  const { toast } = useToast()
   
   // Guest cart localStorage
   const [guestCart, setGuestCart] = useLocalStorage<GuestCartItem[]>('sikupi:cart', [])
@@ -59,7 +45,7 @@ export function useCart() {
     getCurrentUser()
     
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null)
     })
     
@@ -186,7 +172,7 @@ export function useCart() {
     onSuccess: () => {
       // Refetch to get real data
       queryClient.invalidateQueries({ queryKey })
-      toast.success('Berhasil ditambahkan ke keranjang')
+      toast.success('Item berhasil ditambahkan ke keranjang')
     }
   })
 
@@ -229,11 +215,11 @@ export function useCart() {
 
       return { previousCart }
     },
-    onError: (err, variables, context) => {
+    onError: (_err, _variables, context) => {
       if (context?.previousCart) {
         queryClient.setQueryData(queryKey, context.previousCart)
       }
-      toast.error('Gagal memperbarui jumlah')
+      toast.error('Gagal memperbarui jumlah item')
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey })
@@ -277,11 +263,11 @@ export function useCart() {
 
       return { previousCart }
     },
-    onError: (err, variables, context) => {
+    onError: (_err, _variables, context) => {
       if (context?.previousCart) {
         queryClient.setQueryData(queryKey, context.previousCart)
       }
-      toast.error('Gagal menghapus item')
+      toast.error('Gagal menghapus item dari keranjang')
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey })
@@ -355,9 +341,6 @@ export function useCart() {
     }
   }, [user, guestCart.length, mergeOnLogin])
 
-  // Drawer controls
-  const openDrawer = () => setState(prev => ({ ...prev, isDrawerOpen: true }))
-  const closeDrawer = () => setState(prev => ({ ...prev, isDrawerOpen: false }))
 
   return {
     // Data
@@ -365,18 +348,13 @@ export function useCart() {
     isLoading: cartQuery.isLoading,
     error: cartQuery.error,
     
-    // State
-    isDrawerOpen: state.isDrawerOpen,
-    
     // Actions
-    addItem: (params: Parameters<typeof addItemMutation.mutate>[0]) => addItemMutation.mutate(params),
+    addItem: (params: Parameters<typeof addItemMutation.mutate>[0]) => addItemMutation.mutateAsync(params),
+    // For callers needing explicit promise naming
+    addItemAsync: (params: Parameters<typeof addItemMutation.mutate>[0]) => addItemMutation.mutateAsync(params),
     updateQuantity: debouncedUpdateQuantity,
     removeItem: (itemId: number) => removeItemMutation.mutate(itemId),
     clearCart: () => clearCartMutation.mutate(),
-    
-    // Drawer controls
-    openDrawer,
-    closeDrawer,
     
     // Login integration
     mergeOnLogin,

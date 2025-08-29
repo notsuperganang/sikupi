@@ -12,6 +12,7 @@ import VoucherInput from '@/components/cart/VoucherInput'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 import type { Cart } from '@/server/cart-adapter'
 
 interface CartPageClientProps {
@@ -34,9 +35,6 @@ function CartPageContent({ initialCart, initialUser }: { initialCart: Cart | nul
     }
   }
 
-  const handleBackToProducts = () => {
-    window.location.href = '/products'
-  }
 
   // Hydrate initial data if available
   React.useEffect(() => {
@@ -113,14 +111,15 @@ function CartPageContent({ initialCart, initialUser }: { initialCart: Cart | nul
 
           {/* Back to Products */}
           <div className="mt-6">
-            <Button
-              variant="outline"
-              onClick={handleBackToProducts}
-              className="flex items-center gap-2 hover:bg-stone-50"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Lanjut Belanja
-            </Button>
+            <Link href="/products">
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 hover:bg-stone-50"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Lanjut Belanja
+              </Button>
+            </Link>
           </div>
         </div>
 

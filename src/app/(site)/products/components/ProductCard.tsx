@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import Image from 'next/image'
+import { ProductImage } from '@/components/ui/fallback-image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Star, ShoppingCart, Eye, Package, AlertCircle, Sparkles, Recycle, Heart, Droplets } from 'lucide-react'
@@ -33,15 +32,9 @@ export function ProductCard({
   onAddToCart,
   className 
 }: ProductCardProps) {
-  const [imageError, setImageError] = useState(false)
   const CategoryIcon = getCategoryIcon(product.category)
   const stockStatus = getStockStatus(product.stockQty)
   const isNewProduct = isNew(product.createdAt)
-  
-
-  const handleImageError = () => {
-    setImageError(true)
-  }
 
   const handleQuickView = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -65,13 +58,13 @@ export function ProductCard({
         <Card className="group relative overflow-hidden hover:shadow-xl transition-all duration-300 bg-white border border-[var(--sikupi-primary-200)] hover:border-[var(--sikupi-primary-400)] flex flex-col h-full">
           {/* Product Image */}
           <div className="relative aspect-square overflow-hidden" style={{ backgroundColor: 'var(--sikupi-primary-50)' }}>
-            <Image
-              src={imageError ? '/image-asset/coffee-grounds-others.jpg' : (product.imageUrl || '/image-asset/coffee-grounds-others.jpg')}
-              alt={product.title}
+            <ProductImage
+              product={product}
+              src={product.imageUrl}
               fill
               className="object-cover transition-transform duration-300 group-hover:scale-105"
-              onError={handleImageError}
               sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              fallbackSrc="/image-asset/coffee-grounds-others.jpg"
             />
             
             {/* Gradient overlay for better text readability */}

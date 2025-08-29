@@ -84,7 +84,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // Protected buyer routes
-  const protectedBuyerRoutes = ['/orders', '/checkout', '/cart']
+  const protectedBuyerRoutes = ['/orders', '/checkout']
   
   if (protectedBuyerRoutes.some(route => req.nextUrl.pathname.startsWith(route))) {
     if (!user) {

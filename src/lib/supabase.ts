@@ -27,18 +27,20 @@ if (!supabaseServiceRoleKey && typeof window === 'undefined') {
   console.warn('Missing environment variable: SUPABASE_SERVICE_ROLE_KEY - Admin functions will not work')
 }
 
-// Server-side Supabase instance (uses service role key, bypasses RLS)
-// Note: On client-side, this will use anon key, which is fine for non-admin operations
-export const supabaseAdmin = createClient<Database>(
-  supabaseUrl,
-  supabaseServiceRoleKey || supabaseAnonKey, // Fallback to anon key on client-side
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+// Server-side Supabase instance (service role) - never expose service role to browser bundle
+export const supabaseAdmin = typeof window === 'undefined'
+  ? createClient<Database>(
+      supabaseUrl,
+      supabaseServiceRoleKey || supabaseAnonKey,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+  // In the browser re-use the public client to avoid multiple GoTrue instances & leaking secrets
+  : supabase
 
 // Auth helpers
 export const getUser = async () => {
