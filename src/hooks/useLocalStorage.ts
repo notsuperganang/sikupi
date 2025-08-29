@@ -35,8 +35,16 @@ export function useLocalStorage<T>(
       // Allow value to be a function so we have the same API as useState
       const valueToStore = value instanceof Function ? value(storedValue) : value
       
+      // Debug log for cart updates
+      if (key === 'sikupi:cart') {
+        console.log('💾 [LOCALSTORAGE] Setting cart:', { key, old: storedValue, new: valueToStore })
+      }
+      
       // Only update if value has actually changed
       if (JSON.stringify(valueToStore) === JSON.stringify(storedValue)) {
+        if (key === 'sikupi:cart') {
+          console.log('💾 [LOCALSTORAGE] No change, skipping update')
+        }
         return
       }
       
@@ -46,6 +54,9 @@ export function useLocalStorage<T>(
       // Save to local storage
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(key, JSON.stringify(valueToStore))
+        if (key === 'sikupi:cart') {
+          console.log('💾 [LOCALSTORAGE] Saved to localStorage successfully')
+        }
       }
     } catch (error) {
       // A more advanced implementation would handle the error case

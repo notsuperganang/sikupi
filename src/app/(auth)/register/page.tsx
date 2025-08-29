@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -24,6 +24,14 @@ export default function RegisterPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  
+  // Get returnTo from URL params
+  const [returnTo, setReturnTo] = useState<string | null>(null)
+  
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    setReturnTo(urlParams.get('returnTo'))
+  }, [])
 
   const {
     register,
@@ -34,7 +42,15 @@ export default function RegisterPage() {
   })
 
   const handleRoleBasedRedirect = () => {
-    if (profile?.role === 'admin') {
+    // If there's a return URL, go there regardless of role (unless it's admin-only)
+    if (returnTo && returnTo.startsWith('/')) {
+      // Prevent redirecting to admin routes for non-admin users
+      if (returnTo.startsWith('/admin') && profile?.role !== 'admin') {
+        router.push('/')
+      } else {
+        router.push(returnTo)
+      }
+    } else if (profile?.role === 'admin') {
       router.push('/admin')
     } else {
       router.push('/')
@@ -68,7 +84,7 @@ export default function RegisterPage() {
     setError(null)
     
     try {
-      await signInWithGoogle()
+      await signInWithGoogle(returnTo || undefined)
     } catch (error: any) {
       setIsGoogleLoading(false)
       setError(error.message || 'Terjadi kesalahan saat daftar dengan Google')
@@ -434,7 +450,7 @@ export default function RegisterPage() {
                   Sudah punya akun?{' '}
                   <motion.span whileHover={{ scale: 1.05 }} className="inline-block">
                     <Link
-                      href="/login"
+                      href={returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login'}
                       className="font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition-colors"
                     >
                       Masuk sekarang

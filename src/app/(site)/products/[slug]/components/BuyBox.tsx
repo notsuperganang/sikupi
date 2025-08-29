@@ -9,6 +9,8 @@ import { formatRupiah, calculateDiscountPercentage, formatDiscountPercentage } f
 import { getStarStates, formatRating } from '@/lib/rating'
 import { getStockStatus } from '@/lib/products'
 import { useCart } from '@/hooks/useCart'
+import { useAuth } from '@/lib/auth'
+import { useCartDrawer } from '@/lib/cart-context'
 import { cn } from '@/lib/utils'
 import Badges from './Badges'
 import ShippingStrip from './ShippingStrip'
@@ -21,7 +23,10 @@ interface BuyBoxProps {
 export default function BuyBox({ product }: BuyBoxProps) {
   const [quantity, setQuantity] = useState(1)
   const [isWishlisted, setIsWishlisted] = useState(false)
-  const { addItem, openDrawer, isAdding } = useCart()
+  const { addItem, isAdding } = useCart()
+  const { openDrawer } = useCartDrawer()
+  const { user } = useAuth()
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
 
   const stockStatus = getStockStatus(product.stockQty)
   const isInStock = stockStatus.status !== 'out_of_stock'
@@ -92,6 +97,10 @@ export default function BuyBox({ product }: BuyBoxProps) {
   }
 
   const handleAddToCart = async () => {
+    if (!user) {
+      setShowAuthPrompt(true)
+      return
+    }
     try {
       await addItem({
         productId: parseInt(product.id),
@@ -109,6 +118,10 @@ export default function BuyBox({ product }: BuyBoxProps) {
   }
 
   const handleBuyNow = async () => {
+    if (!user) {
+      setShowAuthPrompt(true)
+      return
+    }
     try {
       // Add to cart first
       await addItem({
@@ -335,6 +348,20 @@ export default function BuyBox({ product }: BuyBoxProps) {
           </div>
         </div>
       </div>
+      {showAuthPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-stone-900">Masuk Diperlukan</h3>
+            <p className="text-sm text-stone-600">Silakan login untuk menambahkan produk ke keranjang atau melakukan pembelian.</p>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => setShowAuthPrompt(false)}>Nanti</Button>
+              <Button className="flex-1 bg-amber-600 hover:bg-amber-700" onClick={() => {
+                window.location.href = '/login?returnTo=' + encodeURIComponent('/products/' + product.slug)
+              }}>Masuk</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

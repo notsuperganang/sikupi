@@ -6,26 +6,70 @@ import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { useCart } from '@/hooks/useCart'
 import { useCartDrawer } from '@/lib/cart-context'
+import { useAuth } from '@/lib/auth'
 import CartLineItem from './CartLineItem'
 import EmptyCart from './EmptyCart'
 import FreeShippingStrip from './FreeShippingStrip'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, LogIn } from 'lucide-react'
 
 export default function CartDrawer() {
   const { cart, isLoading, clearCart, isClearing } = useCart()
   const { isDrawerOpen, closeDrawer } = useCartDrawer()
+  const { user, loading } = useAuth()
   
   // Debug logging
   React.useEffect(() => {
-    console.log('🎭 CartDrawer rendered, isDrawerOpen:', isDrawerOpen)
-    console.log('🎭 Full cart state:', { isDrawerOpen, cart: !!cart })
-  }, [isDrawerOpen, cart])
+    console.log('🎭 [DRAWER] Rendered - isDrawerOpen:', isDrawerOpen)
+    console.log('🎭 [DRAWER] Cart state:', { 
+      hasCart: !!cart, 
+      itemCount: cart?.items?.length || 0,
+      totalCount: cart?.totals?.itemCount || 0,
+      isLoading,
+      isAuthenticated: !!user,
+      authLoading: loading,
+      items: cart?.items?.map(item => ({ id: item.id, product_id: item.product_id, quantity: item.quantity, title: item.product_title }))
+    })
+    
+    // Log button state
+    const buttonText = loading ? 'Memuat...' : user ? 'Lanjut ke Pembayaran' : 'Masuk untuk Checkout'
+    const buttonDisabled = loading
+    console.log('🎭 [DRAWER] Button state:', {
+      text: buttonText,
+      disabled: buttonDisabled,
+      hasUser: !!user,
+      loading
+    })
+  }, [isDrawerOpen, cart, isLoading, user, loading])
 
   const hasItems = (cart?.items?.length ?? 0) > 0
   const itemCount = cart?.totals?.itemCount ?? 0
 
   const handleCheckout = () => {
+    console.log('🎭 [CART_DRAWER] handleCheckout called with state:', {
+      hasUser: !!user,
+      userEmail: user?.email,
+      loading,
+      hasItems,
+      itemCount,
+      timestamp: new Date().toISOString()
+    })
+    
     closeDrawer()
+    
+    // Don't redirect if auth is still loading
+    if (loading) {
+      console.log('🎭 [CART_DRAWER] Auth still loading, returning early')
+      return
+    }
+    
+    if (!user) {
+      console.log('🎭 [CART_DRAWER] No user found, redirecting to login')
+      // Redirect to login with checkout as return URL only if auth finished loading
+      window.location.href = '/login?returnTo=/checkout'
+      return
+    }
+    
+    console.log('🎭 [CART_DRAWER] User authenticated, navigating to checkout')
     // Navigate to checkout
     window.location.href = '/checkout'
   }
@@ -120,12 +164,37 @@ export default function CartDrawer() {
               {/* Action Buttons */}
               <div className="space-y-2">
                 <Button
-                  onClick={handleCheckout}
+                  onClick={(e) => {
+                    console.log('🎭 [CART_DRAWER] BUTTON CLICKED! Event:', e)
+                    console.log('🎭 [CART_DRAWER] Button click - current state:', {
+                      hasUser: !!user,
+                      userEmail: user?.email,
+                      loading,
+                      disabled: loading,
+                      timestamp: new Date().toISOString()
+                    })
+                    handleCheckout()
+                  }}
                   className="w-full bg-amber-600 hover:bg-amber-700 text-white"
                   size="lg"
+                  disabled={loading}
                 >
-                  Lanjut ke Pembayaran
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Memuat...
+                    </>
+                  ) : user ? (
+                    <>
+                      Lanjut ke Pembayaran
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  ) : (
+                    <>
+                      Masuk untuk Checkout
+                      <LogIn className="ml-2 h-4 w-4" />
+                    </>
+                  )}
                 </Button>
                 
                 <Button
@@ -142,7 +211,42 @@ export default function CartDrawer() {
         ) : (
           /* Empty Cart */
           <div className="flex items-center justify-center h-full">
-            <EmptyCart onContinueShopping={handleContinueShopping} />
+            {loading ? (
+              /* Loading Auth State */
+              <div className="text-center p-6 space-y-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-2 border-amber-600 border-t-transparent mx-auto mb-4"></div>
+                <p className="text-sm text-stone-600">Memuat keranjang...</p>
+              </div>
+            ) : user ? (
+              <EmptyCart onContinueShopping={handleContinueShopping} />
+            ) : (
+              <div className="text-center p-6 space-y-4">
+                <div className="text-stone-400 mb-3">
+                  <LogIn className="h-16 w-16 mx-auto" />
+                </div>
+                <h3 className="font-semibold text-stone-900">Masuk untuk Melihat Keranjang</h3>
+                <p className="text-stone-600 text-sm mb-4">Login terlebih dahulu untuk menambahkan produk ke keranjang</p>
+                <div className="space-y-2">
+                  <Button 
+                    onClick={() => {
+                      closeDrawer()
+                      window.location.href = '/login'
+                    }}
+                    className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Masuk
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={handleContinueShopping}
+                    className="w-full"
+                  >
+                    Lanjut Belanja
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </SheetContent>

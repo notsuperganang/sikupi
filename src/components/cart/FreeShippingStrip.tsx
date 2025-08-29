@@ -66,7 +66,7 @@ export default function FreeShippingStrip({
         <div className="flex items-start gap-1 text-xs text-amber-700">
           <Info className="h-3 w-3 flex-shrink-0 mt-0.5" />
           <span>
-            *Gratis ongkir berlaku untuk wilayah Aceh, menggunakan kurir reguler
+            *Ongkir dihitung di checkout berdasarkan alamat. Gratis ongkir berlaku seluruh Indonesia
           </span>
         </div>
       </div>

@@ -52,9 +52,9 @@ const Header = () => {
     return name.split(' ').filter(Boolean)[0] || name
   }
 
-  const getInitial = (name?: string | null) => {
-    if (!name) return 'P'
-    const first = getFirstName(name)
+  const getInitial = (fullName?: string | null, fallbackEmail?: string | null) => {
+    const base = fullName || fallbackEmail || 'P'
+    const first = getFirstName(base)
     return first.charAt(0).toUpperCase()
   }
 
@@ -104,9 +104,9 @@ const Header = () => {
             </NavbarButton>
 
             {/* Authentication */}
-            {loading ? (
+            {loading && !user ? (
               <div className="w-9 h-9 bg-gray-200 rounded-full animate-pulse" />
-            ) : user && profile ? (
+            ) : user ? (
               <div className="relative">
                 <button
                   type="button"
@@ -114,12 +114,12 @@ const Header = () => {
                   aria-label="Menu pengguna"
                   className="flex items-center justify-center h-9 w-9 rounded-full bg-stone-600 text-white font-medium shadow-sm hover:bg-stone-500 transition-colors focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-2"
                 >
-                  {getInitial(profile.full_name)}
+                  {getInitial(profile?.full_name, user.email)}
                 </button>
                 {showUserMenu && (
                   <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                     <div className="px-4 pt-1 pb-2 text-xs font-semibold text-stone-600 flex items-center gap-1">
-                      <span>Hai {getFirstName(profile.full_name || 'Pengguna')} 👋</span>
+                      <span>Hai {getFirstName(profile?.full_name || user.email || 'Pengguna')} 👋</span>
                     </div>
                     <Link
                       href="/account"
@@ -226,10 +226,10 @@ const Header = () => {
 
             {/* Mobile Auth Actions */}
             <div className="w-full pt-4 border-t border-gray-200 space-y-2">
-              {user && profile ? (
+      {user ? (
                 <>
                   <div className="px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-100">
-                    Hai, {getFirstName(profile.full_name || 'Pengguna')}!
+        Hai, {getFirstName(profile?.full_name || user.email || 'Pengguna')}!
                   </div>
                   <Link
                     href="/account"

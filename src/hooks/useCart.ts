@@ -2,11 +2,10 @@
 'use client'
 
 import React from 'react'
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
-import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { useDebouncedCallback } from '@/hooks/useDebounce'
-import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth'
 import type { 
   Cart, 
   CartItemWithProduct
@@ -20,53 +19,58 @@ const importCartAdapter = async () => {
   return module
 }
 
-// Guest cart item type
-interface GuestCartItem {
-  productId: number
-  quantity: number
-  addedAt: number
-}
 
 export function useCart() {
-  const [user, setUser] = useState<{ id: string } | null>(null)
-  
+  const { user } = useAuth()
   const queryClient = useQueryClient()
   const { toast } = useToast()
   
-  // Guest cart localStorage
-  const [guestCart, setGuestCart] = useLocalStorage<GuestCartItem[]>('sikupi:cart', [])
-  
-  // Get current user
-  React.useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-    }
-    getCurrentUser()
-    
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null)
-    })
-    
-    return () => subscription.unsubscribe()
-  }, [])
+  // Log cart initialization with auth state
+  console.log('🛒 [USE_CART] Hook initialized with user:', {
+    hasUser: !!user,
+    userEmail: user?.email,
+    userId: user?.id,
+    timestamp: new Date().toISOString()
+  })
 
-  // Query key for cart data
-  const queryKey = ['cart', user?.id || 'guest']
+  // Query key for cart data - authenticated users only
+  const queryKey = ['cart', user?.id]
 
-  // Cart query
+  // Cart query - only for authenticated users
   const cartQuery = useQuery({
     queryKey,
     queryFn: async (): Promise<Cart> => {
+      console.log('🛒 [USE_CART] Cart query running with user:', {
+        hasUser: !!user,
+        userId: user?.id,
+        timestamp: new Date().toISOString()
+      })
+      
       if (!user) {
-        // For guest users, calculate cart from localStorage
-        const cartAdapter = await importCartAdapter()
-        return cartAdapter.getActiveCart()
-      } else {
-        const cartAdapter = await importCartAdapter()
-        return cartAdapter.getActiveCart(user.id)
+        console.log('🛒 [USE_CART] No user from AuthProvider, returning empty cart')
+        // Return empty cart for unauthenticated users
+        return {
+          items: [],
+          totals: {
+            itemCount: 0,
+            subtotal: 0,
+            shipping: 0,
+            discount: 0,
+            total: 0
+          }
+        }
       }
+      
+      console.log('🛒 [USE_CART] Fetching user cart for:', user.id)
+      const cartAdapter = await importCartAdapter()
+      const result = await cartAdapter.getActiveCart(user.id)
+      console.log('🛒 [USE_CART] User cart result:', {
+        itemCount: result.items.length,
+        totalCount: result.totals.itemCount,
+        subtotal: result.totals.subtotal,
+        items: result.items.map(item => ({ id: item.id, product_id: item.product_id, quantity: item.quantity, title: item.product_title }))
+      })
+      return result
     },
     enabled: true,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -84,20 +88,7 @@ export function useCart() {
       priceIdr?: number
     }) => {
       if (!user) {
-        // Guest cart: add to localStorage
-        setGuestCart(prev => {
-          const existing = prev.find(item => item.productId === productId)
-          if (existing) {
-            return prev.map(item =>
-              item.productId === productId
-                ? { ...item, quantity: item.quantity + quantity }
-                : item
-            )
-          } else {
-            return [...prev, { productId, quantity, addedAt: Date.now() }]
-          }
-        })
-        return
+        throw new Error('AUTH_REQUIRED')
       }
 
       const cartAdapter = await importCartAdapter()
@@ -115,7 +106,7 @@ export function useCart() {
       const previousCart = queryClient.getQueryData<Cart>(queryKey)
 
       // Optimistically update cart
-      if (user && previousCart) {
+  if (user && previousCart) {
         const existingItem = previousCart.items.find(item => item.product_id === variables.productId)
         
         let newItems: CartItemWithProduct[]
@@ -166,12 +157,18 @@ export function useCart() {
       if (context?.previousCart) {
         queryClient.setQueryData(queryKey, context.previousCart)
       }
-      toast.error('Gagal menambahkan ke keranjang')
-      console.error('Add to cart error:', err)
+      if ((err as any)?.message === 'AUTH_REQUIRED') {
+        toast.info('Masuk diperlukan', 'Silakan login untuk menambahkan ke keranjang')
+      } else {
+        toast.error('Gagal menambahkan ke keranjang')
+        console.error('Add to cart error:', err)
+      }
     },
     onSuccess: () => {
-      // Refetch to get real data
-      queryClient.invalidateQueries({ queryKey })
+      console.log('🎉 [ADD_ITEM] Success callback triggered for user:', user?.id)
+      // Refetch to get real data from server
+      queryClient.invalidateQueries({ queryKey: ['cart', user?.id] })
+      console.log('🎉 [ADD_ITEM] Showing success toast')
       toast.success('Item berhasil ditambahkan ke keranjang')
     }
   })
@@ -230,9 +227,7 @@ export function useCart() {
   const removeItemMutation = useMutation({
     mutationFn: async (itemId: number) => {
       if (!user) {
-        // For guest cart, remove from localStorage by productId
-        setGuestCart(prev => prev.filter(item => item.productId !== itemId))
-        return
+        throw new Error('AUTH_REQUIRED')
       }
 
       const cartAdapter = await importCartAdapter()
@@ -279,8 +274,7 @@ export function useCart() {
   const clearCartMutation = useMutation({
     mutationFn: async () => {
       if (!user) {
-        setGuestCart([])
-        return
+        throw new Error('AUTH_REQUIRED')
       }
 
       const cartAdapter = await importCartAdapter()
@@ -304,42 +298,6 @@ export function useCart() {
     []
   )
 
-  // Merge guest cart on login
-  const mergeOnLogin = useCallback(async () => {
-    if (!user || guestCart.length === 0) return
-
-    try {
-      const cartAdapter = await importCartAdapter()
-      const result = await cartAdapter.mergeGuestCart({
-        userId: user.id,
-        guestItems: guestCart.map(item => ({
-          productId: item.productId,
-          quantity: item.quantity
-        }))
-      })
-
-      // Clear guest cart after successful merge
-      if (result.success > 0) {
-        setGuestCart([])
-        queryClient.invalidateQueries({ queryKey })
-        toast.success(`${result.success} item berhasil dipindahkan ke keranjang`)
-      }
-
-      if (result.failed > 0) {
-        toast.warning(`${result.failed} item gagal dipindahkan`)
-      }
-    } catch (error) {
-      console.error('Failed to merge guest cart:', error)
-      toast.error('Gagal memindahkan keranjang')
-    }
-  }, [user, guestCart, queryClient, queryKey, setGuestCart])
-
-  // Auto-merge guest cart when user logs in
-  React.useEffect(() => {
-    if (user && guestCart.length > 0) {
-      mergeOnLogin()
-    }
-  }, [user, guestCart.length, mergeOnLogin])
 
 
   return {
@@ -355,9 +313,6 @@ export function useCart() {
     updateQuantity: debouncedUpdateQuantity,
     removeItem: (itemId: number) => removeItemMutation.mutate(itemId),
     clearCart: () => clearCartMutation.mutate(),
-    
-    // Login integration
-    mergeOnLogin,
     
     // Mutation states
     isAdding: addItemMutation.isPending,

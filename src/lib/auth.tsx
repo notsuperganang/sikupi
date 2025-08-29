@@ -12,7 +12,7 @@ interface AuthContextType {
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, userData: { full_name: string; phone: string }) => Promise<void>
-  signInWithGoogle: () => Promise<void>
+  signInWithGoogle: (returnTo?: string) => Promise<void>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -24,14 +24,26 @@ export function useAuth() {
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider')
   }
+  
+  // Log every time useAuth is called with current state
+  console.log('🔐 [USE_AUTH] Called with state:', {
+    hasUser: !!context.user,
+    userEmail: context.user?.email,
+    loading: context.loading,
+    hasProfile: !!context.profile,
+    timestamp: new Date().toISOString()
+  })
+  
   return context
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+export function AuthProvider({ children, initialSession }: { children: React.ReactNode; initialSession?: Session | null }) {
+  const [user, setUser] = useState<User | null>(initialSession?.user || null)
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [session, setSession] = useState<Session | null>(initialSession || null)
+  const [loading, setLoading] = useState(!initialSession)
+
+  console.log('🔐 [AUTH_PROVIDER] Initialized with loading:', loading)
 
   const fetchProfile = async (userId: string, retryCount = 0) => {
     try {
@@ -129,25 +141,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      
-      if (session?.user) {
-        fetchProfile(session.user.id).then(setProfile)
-      }
-      
-      setLoading(false)
-    })
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+    console.log('🔐 [AUTH_PROVIDER] useEffect started - initial session:', !!initialSession)
+    
+    // If we have an initial session from server, use it and fetch profile
+    if (initialSession?.user) {
+      console.log('🔐 [AUTH_PROVIDER] Using server-provided initial session for user:', initialSession.user.id)
+      fetchProfile(initialSession.user.id).then((profileData) => {
+        console.log('🔐 [AUTH_PROVIDER] Profile fetched for initial session:', profileData)
+        setProfile(profileData)
+        setLoading(false)
+      })
+    } else {
+      // Fallback: Get initial session from client
+      console.log('🔐 [AUTH_PROVIDER] No initial session, fetching from client')
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        console.log('🔐 [AUTH_PROVIDER] Initial session fetched from client:', {
+          hasSession: !!session,
+          hasUser: !!session?.user,
+          userEmail: session?.user?.email,
+          userId: session?.user?.id
+        })
+        
         setSession(session)
         setUser(session?.user ?? null)
         
         if (session?.user) {
+          console.log('🔐 [AUTH_PROVIDER] Fetching profile for user:', session.user.id)
+          fetchProfile(session.user.id).then((profileData) => {
+            console.log('🔐 [AUTH_PROVIDER] Profile fetched:', profileData)
+            setProfile(profileData)
+          })
+        }
+        
+        console.log('🔐 [AUTH_PROVIDER] Setting loading to false')
+        setLoading(false)
+      })
+    }
+
+    // Listen for auth changes (but skip initial session if we have server session)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔐 [AUTH_PROVIDER] Auth state change:', {
+          event,
+          hasSession: !!session,
+          hasUser: !!session?.user,
+          userEmail: session?.user?.email,
+          userId: session?.user?.id,
+          hasInitialSession: !!initialSession,
+          timestamp: new Date().toISOString()
+        })
+        
+        // Skip initial session event if we already have server-provided session
+        if (event === 'INITIAL_SESSION' && initialSession) {
+          console.log('🔐 [AUTH_PROVIDER] Skipping INITIAL_SESSION event - using server session instead')
+          return
+        }
+        
+        setSession(session)
+        setUser(session?.user ?? null)
+        
+        if (session?.user) {
+          console.log('🔐 [AUTH_PROVIDER] Auth state change - fetching profile for user:', session.user.id)
           let profileData = await fetchProfile(session.user.id)
           
           // If profile doesn't exist and this is a Google user (or new sign up), create it
@@ -159,7 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                                  user.user_metadata?.iss?.includes('accounts.google.com')
             
             if (isGoogleUser) {
-              console.log('Creating profile for Google user...')
+              console.log('🔐 [AUTH_PROVIDER] Creating profile for Google user...')
               const success = await createProfileForGoogleUser(user)
               if (success) {
                 // Wait a bit for the database to sync, then fetch the profile
@@ -169,17 +223,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
           
+          console.log('🔐 [AUTH_PROVIDER] Auth state change - profile set:', profileData)
           setProfile(profileData)
         } else {
+          console.log('🔐 [AUTH_PROVIDER] Auth state change - no user, clearing profile')
           setProfile(null)
         }
         
+        console.log('🔐 [AUTH_PROVIDER] Auth state change - setting loading to false')
         setLoading(false)
       }
     )
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [initialSession])
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -190,11 +247,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error
   }
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (returnTo?: string) => {
+    // Include returnTo in the redirect URL itself
+    let redirectUrl = `${window.location.origin}/auth/callback`
+    if (returnTo) {
+      redirectUrl += `?returnTo=${encodeURIComponent(returnTo)}`
+    }
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+        redirectTo: redirectUrl
       }
     })
     

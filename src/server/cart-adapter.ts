@@ -52,20 +52,11 @@ function calculateTotals(items: any[]): CartTotals {
   }
 }
 
-// Get active cart for user (or empty cart for guests)
-export async function getActiveCart(userId?: string): Promise<Cart> {
+
+// Get active cart for authenticated user only
+export async function getActiveCart(userId: string): Promise<Cart> {
   if (!userId) {
-    // Return empty cart for guests
-    return {
-      items: [],
-      totals: {
-        subtotal: 0,
-        shipping: 0,
-        discount: 0,
-        total: 0,
-        itemCount: 0
-      }
-    }
+    throw new Error('User ID is required for cart operations')
   }
 
   try {
@@ -178,33 +169,6 @@ export async function clearCart(userId: string): Promise<void> {
   }
 }
 
-// Merge guest cart items into user cart (for login flow)
-export async function mergeGuestCart({
-  userId,
-  guestItems
-}: {
-  userId: string
-  guestItems: Array<{ productId: number; quantity: number }>
-}): Promise<{ success: number; failed: number }> {
-  let success = 0
-  let failed = 0
-
-  for (const item of guestItems) {
-    try {
-      const result = await DatabaseCartStorage.addItem(userId, item.productId, item.quantity)
-      if (result.success) {
-        success++
-      } else {
-        failed++
-      }
-    } catch (error) {
-      console.error('Failed to merge cart item:', item, error)
-      failed++
-    }
-  }
-
-  return { success, failed }
-}
 
 // Validate stock availability for cart items
 export async function validateCartStock(userId: string): Promise<{
@@ -241,3 +205,4 @@ export async function validateCartStock(userId: string): Promise<{
     throw new Error('Failed to validate cart stock')
   }
 }
+

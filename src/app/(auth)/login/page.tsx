@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -15,7 +15,6 @@ import { Label } from '@/components/ui/label'
 import { Alert } from '@/components/ui/alert'
 import { useAuth } from '@/lib/auth'
 import { loginSchema, type LoginFormData } from '@/lib/validations/auth'
-import { cn } from '@/lib/utils'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -23,6 +22,29 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // Get returnTo from URL params
+  const [returnTo, setReturnTo] = useState<string | null>(null)
+  
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    setReturnTo(urlParams.get('returnTo'))
+  }, [])
+
+  // If user becomes authenticated (OAuth redirect) while on /login, push them onward.
+  useEffect(() => {
+    if (profile) {
+      if (returnTo && returnTo.startsWith('/')) {
+        if (returnTo.startsWith('/admin') && profile.role !== 'admin') {
+          router.replace('/')
+        } else {
+          router.replace(returnTo)
+        }
+      } else {
+        router.replace(profile.role === 'admin' ? '/admin' : '/')
+      }
+    }
+  }, [profile, returnTo, router])
 
   const {
     register,
@@ -33,7 +55,15 @@ export default function LoginPage() {
   })
 
   const handleRoleBasedRedirect = () => {
-    if (profile?.role === 'admin') {
+    // If there's a return URL, go there regardless of role (unless it's admin-only)
+    if (returnTo && returnTo.startsWith('/')) {
+      // Prevent redirecting to admin routes for non-admin users
+      if (returnTo.startsWith('/admin') && profile?.role !== 'admin') {
+        router.push('/')
+      } else {
+        router.push(returnTo)
+      }
+    } else if (profile?.role === 'admin') {
       router.push('/admin')
     } else {
       router.push('/')
@@ -59,7 +89,7 @@ export default function LoginPage() {
     setError(null)
     
     try {
-      await signInWithGoogle()
+      await signInWithGoogle(returnTo || undefined)
     } catch (error: any) {
       setIsGoogleLoading(false)
       setError(error.message || 'Terjadi kesalahan saat masuk dengan Google')
@@ -318,7 +348,7 @@ export default function LoginPage() {
                   Belum punya akun?{' '}
                   <motion.span whileHover={{ scale: 1.05 }} className="inline-block">
                     <Link
-                      href="/register"
+                      href={returnTo ? `/register?returnTo=${encodeURIComponent(returnTo)}` : '/register'}
                       className="font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition-colors"
                     >
                       Daftar sekarang
@@ -354,16 +384,3 @@ export default function LoginPage() {
   )
 }
 
-const LabelInputContainer = ({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => {
-  return (
-    <div className={cn("flex w-full flex-col space-y-2", className)}>
-      {children}
-    </div>
-  );
-};

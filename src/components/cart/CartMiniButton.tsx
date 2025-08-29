@@ -6,13 +6,15 @@ import { ShoppingCart } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useCart } from '@/hooks/useCart'
+import { useCartDrawer } from '@/lib/cart-context'
 
 interface CartMiniButtonProps {
   className?: string
 }
 
 export default function CartMiniButton({ className }: CartMiniButtonProps) {
-  const { cart, openDrawer, isLoading } = useCart()
+  const { cart, isLoading } = useCart()
+  const { openDrawer } = useCartDrawer()
   
   const itemCount = cart?.totals?.itemCount || 0
   const hasItems = itemCount > 0

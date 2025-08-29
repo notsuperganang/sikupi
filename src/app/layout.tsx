@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/lib/auth";
+import AuthServerWrapper from "@/components/AuthServerWrapper";
 import { QueryProvider } from "@/lib/query-client";
 import { ToastProvider } from "@/lib/toast-context";
 
@@ -22,11 +22,11 @@ export default function RootLayout({
       <body className={inter.className}>
         {/* Global providers only. Header/Footer applied in (site) route group layout. */}
         <QueryProvider>
-          <AuthProvider>
+          <AuthServerWrapper>
             <ToastProvider>
               {children}
             </ToastProvider>
-          </AuthProvider>
+          </AuthServerWrapper>
         </QueryProvider>
       </body>
     </html>

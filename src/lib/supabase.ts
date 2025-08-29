@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 import { Database, Profile } from '@/types/database'
 
 // Get environment variables with fallback for debugging
@@ -13,11 +14,10 @@ if (!supabaseAnonKey) {
   throw new Error('Missing environment variable: NEXT_PUBLIC_SUPABASE_ANON_KEY')
 }
 
-// Client-side Supabase instance (uses anon key, respects RLS)
-export const supabase = createClient<Database>(
-  supabaseUrl,
-  supabaseAnonKey
-)
+// Client-side Supabase instance with proper SSR cookie handling
+export const supabase = typeof window !== 'undefined' 
+  ? createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+  : createClient<Database>(supabaseUrl, supabaseAnonKey)
 
 // Get service role key (only available server-side)
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY

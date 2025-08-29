@@ -17,6 +17,7 @@ import {
   LoadMoreError 
 } from './ProductErrorBoundary'
 import { useCart } from '@/hooks/useCart'
+import { useAuth } from '@/lib/auth'
 import { useCartDrawer } from '@/lib/cart-context'
 import { 
   searchParamsToFilters, 
@@ -115,9 +116,15 @@ export function ProductListingClient({
   }
 
   const { addItem, isAdding } = useCart()
+  const { user } = useAuth()
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const { openDrawer } = useCartDrawer()
 
   const handleAddToCart = (productId: string, quantity: number = 1) => {
+    if (!user) {
+      setShowAuthPrompt(true)
+      return
+    }
     const product = products.find(p => p.id === productId)
     if (!product) return
     addItem({
@@ -141,6 +148,20 @@ export function ProductListingClient({
   return (
     <ProductErrorBoundary>
       <div className={`min-h-screen bg-stone-50 ${className || ''}`} style={{ backgroundColor: '#fafaf9' }}>
+        {showAuthPrompt && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
+              <h3 className="text-lg font-semibold text-stone-900">Masuk Diperlukan</h3>
+              <p className="text-sm text-stone-600">Silakan login untuk menambahkan produk ke keranjang.</p>
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setShowAuthPrompt(false)}>Nanti</Button>
+                <Button className="flex-1 bg-amber-600 hover:bg-amber-700" onClick={() => {
+                  window.location.href = '/login?returnTo=' + encodeURIComponent(window.location.pathname + window.location.search)
+                }}>Masuk</Button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="container mx-auto px-4 py-6">
           <div className="flex gap-6">
             {/* Desktop Sidebar */}
