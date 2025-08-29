@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 import { QueryProvider } from "@/lib/query-client";
+import CartClient from "@/components/cart/CartClient";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,9 +20,12 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <body className={inter.className}>
+        {/* Global providers only. Header/Footer applied in (site) route group layout. */}
         <QueryProvider>
           <AuthProvider>
-            {children}
+            <CartClient>
+              {children}
+            </CartClient>
           </AuthProvider>
         </QueryProvider>
       </body>

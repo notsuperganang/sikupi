@@ -1,50 +1,11 @@
 import Link from "next/link";
-import { Coffee, ShoppingCart, Package, BookOpen, Settings, User, LogIn } from "lucide-react";
+import { Coffee, ShoppingCart, Package, BookOpen, Settings, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Home() {
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom right, var(--sikupi-primary-50), var(--sikupi-coffee-light))' }}>
-      {/* Navigation Header */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Coffee className="h-8 w-8" style={{ color: 'var(--sikupi-primary)' }} />
-              <span className="ml-2 text-xl font-bold" style={{ color: 'var(--sikupi-primary-800)' }}>Sikupi</span>
-            </div>
-            
-            <div className="hidden md:flex items-center space-x-4">
-              <Link href="/products" className="sikupi-nav-link px-3 py-2 rounded-md text-sm font-medium">
-                Products
-              </Link>
-              <Link href="/magazine" className="sikupi-nav-link px-3 py-2 rounded-md text-sm font-medium">
-                Magazine
-              </Link>
-              <Link href="/cart" className="sikupi-nav-link px-3 py-2 rounded-md text-sm font-medium">
-                Cart
-              </Link>
-              <Link href="/orders" className="sikupi-nav-link px-3 py-2 rounded-md text-sm font-medium">
-                Orders
-              </Link>
-              <Link href="/admin" className="sikupi-nav-link px-3 py-2 rounded-md text-sm font-medium">
-                Admin
-              </Link>
-              <Link href="/login">
-                <Button variant="outline" size="sm" className="border-2 hover:bg-opacity-10"
-                        style={{ 
-                          borderColor: 'var(--sikupi-primary)', 
-                          color: 'var(--sikupi-primary)',
-                        }}>
-                  <LogIn className="h-4 w-4 mr-2" />
-                  Login
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
 
       {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

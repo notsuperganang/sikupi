@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import { formatRupiah, calculateDiscountPercentage, formatDiscountPercentage } from '@/lib/currency'
 import { getStarStates, formatRating } from '@/lib/rating'
 import { getStockStatus } from '@/lib/products'
+import { useCart } from '@/hooks/useCart'
 import { cn } from '@/lib/utils'
 import Badges from './Badges'
 import ShippingStrip from './ShippingStrip'
@@ -20,6 +21,7 @@ interface BuyBoxProps {
 export default function BuyBox({ product }: BuyBoxProps) {
   const [quantity, setQuantity] = useState(1)
   const [isWishlisted, setIsWishlisted] = useState(false)
+  const { addItem, openDrawer, isAdding } = useCart()
 
   const stockStatus = getStockStatus(product.stockQty)
   const isInStock = stockStatus.status !== 'out_of_stock'
@@ -89,26 +91,38 @@ export default function BuyBox({ product }: BuyBoxProps) {
     }
   }
 
-  const handleAddToCart = () => {
-    // Mock add to cart functionality
-    const event = new CustomEvent('showToast', {
-      detail: {
-        message: `${quantity} ${product.title} ditambahkan ke keranjang`,
-        type: 'success'
-      }
-    })
-    window.dispatchEvent(event)
+  const handleAddToCart = async () => {
+    try {
+      await addItem({
+        productId: parseInt(product.id),
+        quantity: quantity,
+        productTitle: product.title,
+        priceIdr: product.price
+      })
+      
+      // Open cart drawer after successful add
+      setTimeout(() => openDrawer(), 300)
+    } catch (error) {
+      // Error handling is done by the cart hook
+      console.error('Failed to add to cart:', error)
+    }
   }
 
-  const handleBuyNow = () => {
-    // Mock buy now functionality
-    const event = new CustomEvent('showToast', {
-      detail: {
-        message: 'Mengarahkan ke checkout...',
-        type: 'info'
-      }
-    })
-    window.dispatchEvent(event)
+  const handleBuyNow = async () => {
+    try {
+      // Add to cart first
+      await addItem({
+        productId: parseInt(product.id),
+        quantity: quantity,
+        productTitle: product.title,
+        priceIdr: product.price
+      })
+      
+      // Then navigate to checkout
+      window.location.href = '/checkout'
+    } catch (error) {
+      console.error('Failed to buy now:', error)
+    }
   }
 
   return (
@@ -251,9 +265,10 @@ export default function BuyBox({ product }: BuyBoxProps) {
               variant="outline"
               className="w-full border-amber-600 text-amber-700 hover:bg-amber-50 font-medium py-3 text-base"
               size="lg"
+              disabled={isAdding}
             >
               <ShoppingCart className="w-4 h-4 mr-2" />
-              + Keranjang
+              {isAdding ? 'Menambahkan...' : '+ Keranjang'}
             </Button>
           </>
         ) : (

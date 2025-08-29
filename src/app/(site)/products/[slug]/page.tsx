@@ -2,6 +2,7 @@ import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase'
 import { transformImageUrls } from '@/lib/images'
+import CartClient from '@/components/cart/CartClient'
 import Gallery from './components/Gallery'
 import BuyBox from './components/BuyBox'
 import ProductInfo from './components/ProductInfo'
@@ -212,58 +213,60 @@ export default async function ProductPage({ params }: ProductPageProps) {
   ]
 
   return (
-    <main className="min-h-screen bg-stone-50">
-      {/* Breadcrumbs */}
-      <div className="bg-white border-b border-stone-200">
-        <div className="container mx-auto px-4 py-3">
-          <nav className="flex items-center space-x-2 text-sm text-stone-600">
-            {breadcrumbs.map((crumb, index) => (
-              <div key={index} className="flex items-center space-x-2">
-                {index > 0 && <span>›</span>}
-                {crumb.current ? (
-                  <span className="text-amber-800 font-medium truncate max-w-[200px]">
-                    {crumb.label}
-                  </span>
-                ) : (
-                  <a
-                    href={crumb.href}
-                    className="hover:text-amber-800 transition-colors"
-                  >
-                    {crumb.label}
-                  </a>
-                )}
-              </div>
-            ))}
-          </nav>
-        </div>
-      </div>
-
-      {/* Main Product Section */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Left: Gallery */}
-          <Gallery product={product} />
-
-          {/* Right: Buy Box */}
-          <BuyBox product={product} />
+    <CartClient>
+      <main className="min-h-screen bg-stone-50">
+        {/* Breadcrumbs */}
+        <div className="bg-white border-b border-stone-200">
+          <div className="container mx-auto px-4 py-3">
+            <nav className="flex items-center space-x-2 text-sm text-stone-600">
+              {breadcrumbs.map((crumb, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  {index > 0 && <span>›</span>}
+                  {crumb.current ? (
+                    <span className="text-amber-800 font-medium truncate max-w-[200px]">
+                      {crumb.label}
+                    </span>
+                  ) : (
+                    <a
+                      href={crumb.href}
+                      className="hover:text-amber-800 transition-colors"
+                    >
+                      {crumb.label}
+                    </a>
+                  )}
+                </div>
+              ))}
+            </nav>
+          </div>
         </div>
 
-        {/* Product Information */}
-        <div className="mt-12">
-          <ProductInfo product={product} />
-        </div>
+        {/* Main Product Section */}
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+            {/* Left: Gallery */}
+            <Gallery product={product} />
 
-        {/* Reviews Section */}
-        <div className="mt-12">
-          <Reviews product={product} />
-        </div>
+            {/* Right: Buy Box */}
+            <BuyBox product={product} />
+          </div>
 
-        {/* Related Products */}
-        <RelatedProducts 
-          products={relatedProducts}
-          currentProductCategory={product.category}
-        />
-      </div>
-    </main>
+          {/* Product Information */}
+          <div className="mt-12">
+            <ProductInfo product={product} />
+          </div>
+
+          {/* Reviews Section */}
+          <div className="mt-12">
+            <Reviews product={product} />
+          </div>
+
+          {/* Related Products */}
+          <RelatedProducts 
+            products={relatedProducts}
+            currentProductCategory={product.category}
+          />
+        </div>
+      </main>
+    </CartClient>
   )
 }
