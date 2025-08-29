@@ -60,6 +60,7 @@ export default function ShippingOptions({
   const [courierOptions, setCourierOptions] = useState<CourierOption[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [lastFetchKey, setLastFetchKey] = useState<string>('')
 
   const fetchShippingRates = async () => {
     if (!shippingAddress.area_id) {
@@ -67,12 +68,43 @@ export default function ShippingOptions({
       return
     }
 
+    // Validate required fields before making the request
+    if (!shippingAddress.postal_code) {
+      setError('Kode pos tidak ditemukan')
+      toast.error('Data tidak lengkap', 'Kode pos diperlukan untuk menghitung tarif pengiriman')
+      return
+    }
+
+    // Create a unique key for this request to prevent duplicates
+    const requestKey = `${shippingAddress.area_id}-${JSON.stringify(cartItems.map(item => ({ id: item.product_id, qty: item.quantity })))}`
+    
+    // Skip if this exact request was just made
+    if (requestKey === lastFetchKey) {
+      console.log('Skipping duplicate request for:', requestKey)
+      return
+    }
+
+    setLastFetchKey(requestKey)
     setIsLoading(true)
     setError(null)
 
     try {
+      // Ensure all required fields are present and not empty
+      const destination_address = {
+        recipient_name: shippingAddress.recipient_name || '',
+        phone: shippingAddress.phone || '',
+        email: shippingAddress.email || '',
+        address: shippingAddress.address || '',
+        city: shippingAddress.city || '',
+        postal_code: shippingAddress.postal_code || '',
+        area_id: shippingAddress.area_id,
+      }
+
+      // Debug logging to help troubleshoot
+      // console.log('Shipping address data:', destination_address)
+
       const requestData = {
-        destination_address: shippingAddress,
+        destination_address,
         items: cartItems.map(item => ({
           product_id: item.product_id,
           quantity: item.quantity,
@@ -88,19 +120,28 @@ export default function ShippingOptions({
         body: JSON.stringify(requestData)
       })
 
-      const data: ShippingRatesResponse = await response.json()
+      const data = await response.json()
 
-      if (!data.success || !data.data.rates) {
-        throw new Error('Gagal mengambil tarif pengiriman')
+      if (!response.ok) {
+        console.error('API Error Response:', data)
+        const errorMsg = data.error || data.message || `HTTP ${response.status}: ${response.statusText}`
+        throw new Error(errorMsg)
       }
 
-      setCourierOptions(data.data.rates)
+      if (!data.success || !data.data?.rates) {
+        const errorMsg = data.error || data.message || 'Gagal mengambil tarif pengiriman'
+        throw new Error(errorMsg)
+      }
 
-      if (data.data.rates.length === 0) {
+      const typedData = data as ShippingRatesResponse
+
+      setCourierOptions(typedData.data.rates)
+
+      if (typedData.data.rates.length === 0) {
         setError('Tidak ada opsi pengiriman tersedia untuk alamat ini')
         toast.warning('Tidak ada kurir tersedia', 'Coba ubah alamat atau kode pos')
       } else {
-        toast.success('Tarif dimuat', `${data.data.rates.length} opsi kurir tersedia`)
+        toast.success('Tarif dimuat', `${typedData.data.rates.length} opsi kurir tersedia`)
       }
 
     } catch (err) {
@@ -114,8 +155,28 @@ export default function ShippingOptions({
   }
 
   useEffect(() => {
+    // Create a stable key for the shipping request
+    const requestKey = shippingAddress.area_id ? 
+      `${shippingAddress.area_id}-${JSON.stringify(cartItems.map(item => ({ id: item.product_id, qty: item.quantity })))}` : 
+      ''
+    
+    if (!requestKey) return
+
+    // Debounce the API call to prevent rapid successive calls
+    const timeoutId = setTimeout(() => {
+      if (requestKey !== lastFetchKey) {
+        fetchShippingRates()
+      }
+    }, 300) // 300ms debounce
+
+    return () => clearTimeout(timeoutId)
+  }, [shippingAddress.area_id, shippingAddress.postal_code, cartItems, lastFetchKey])
+
+  const handleRefreshRates = () => {
+    // Clear the last fetch key to allow the same request to be made again
+    setLastFetchKey('')
     fetchShippingRates()
-  }, [shippingAddress.area_id, cartItems])
+  }
 
   const handleCourierSelect = (option: CourierOption) => {
     const courier: SelectedCourier = {
@@ -132,7 +193,7 @@ export default function ShippingOptions({
   }
 
   const getCourierLogo = (company: string) => {
-    // Fallback courier logos - you can replace these with actual logo URLs
+    // Enhanced fallback courier logos with more comprehensive list
     const logos: Record<string, string> = {
       jne: '🚚',
       pos: '📮',
@@ -144,10 +205,20 @@ export default function ShippingOptions({
       rex: '👑',
       ide: '💡',
       lion: '🦁',
-      sap: '📋'
+      sap: '📋',
+      anteraja: '🏃',
+      jet: '✈️',
+      rpx: '📨',
+      first: '🥇',
+      pandu: '🎯',
+      dakota: '🚐',
+      kurir: '👨‍💼',
+      indah: '🌺',
+      pahala: '🏆',
+      pigeon: '🕊️'
     }
     
-    return logos[company.toLowerCase()] || '🚚'
+    return logos[company.toLowerCase()] || '�'
   }
 
   if (isLoading) {
@@ -170,7 +241,7 @@ export default function ShippingOptions({
           <p className="font-medium">Gagal Memuat Opsi Pengiriman</p>
           <p className="text-sm mt-1">{error}</p>
         </div>
-        <Button onClick={fetchShippingRates} variant="outline">
+        <Button onClick={handleRefreshRates} variant="outline">
           <RefreshCw className="h-4 w-4 mr-2" />
           Coba Lagi
         </Button>
@@ -186,7 +257,7 @@ export default function ShippingOptions({
         <p className="text-sm text-stone-500 mt-1">
           Tidak ada kurir yang melayani alamat ini
         </p>
-        <Button onClick={fetchShippingRates} variant="outline" className="mt-4">
+        <Button onClick={handleRefreshRates} variant="outline" className="mt-4">
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
@@ -227,22 +298,28 @@ export default function ShippingOptions({
             >
               <div className="flex items-start gap-4">
                 {/* Courier Logo */}
-                <div className="flex-shrink-0">
-                  {option.courier_logo ? (
+                <div className="flex-shrink-0 relative">
+                  {option.courier_logo && (
                     <img 
                       src={option.courier_logo} 
-                      alt={option.company}
-                      className="w-12 h-12 object-contain"
+                      alt={`${option.company} logo`}
+                      className="w-12 h-12 object-contain rounded-lg bg-white p-1 border border-stone-200"
                       onError={(e) => {
                         const target = e.currentTarget as HTMLImageElement
                         target.style.display = 'none'
-                        const sibling = target.nextElementSibling as HTMLElement
-                        if (sibling) sibling.style.display = 'flex'
+                        const fallback = target.nextElementSibling as HTMLElement
+                        if (fallback) fallback.style.display = 'flex'
+                      }}
+                      onLoad={(e) => {
+                        // Hide fallback when image loads successfully
+                        const target = e.currentTarget as HTMLImageElement
+                        const fallback = target.nextElementSibling as HTMLElement
+                        if (fallback) fallback.style.display = 'none'
                       }}
                     />
-                  ) : null}
+                  )}
                   <div 
-                    className={`w-12 h-12 bg-stone-100 rounded-lg flex items-center justify-center text-2xl ${
+                    className={`w-12 h-12 bg-gradient-to-br from-stone-100 to-stone-200 rounded-lg flex items-center justify-center text-2xl shadow-sm ${
                       option.courier_logo ? 'hidden' : 'flex'
                     }`}
                   >
@@ -324,7 +401,7 @@ export default function ShippingOptions({
 
       {/* Refresh button */}
       <div className="flex justify-center pt-4">
-        <Button variant="outline" onClick={fetchShippingRates} size="sm">
+        <Button variant="outline" onClick={handleRefreshRates} size="sm">
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh Tarif
         </Button>

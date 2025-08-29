@@ -164,19 +164,35 @@ export default function AddressForm({ onAddressComplete, initialAddress }: Addre
       return
     }
 
+    console.log('validatedArea in onSubmit:', validatedArea)
+    console.log('form data:', data)
+
+    // Ensure postal_code is available - use validatedArea first, then form data, then empty string
+    const finalPostalCode = validatedArea.postal_code || data.postal_code || ''
+
     const shippingAddress: ShippingAddress = {
       ...data,
       area_id: validatedArea.id,
-      // Use the validated area's postal code for shipping calculation
-      postal_code: validatedArea.postal_code,
+      postal_code: finalPostalCode,
     }
 
+    console.log('AddressForm submitting address:', shippingAddress)
     onAddressComplete(shippingAddress)
     toast.success('Alamat tersimpan', 'Lanjut ke pemilihan kurir pengiriman')
   }
 
   const selectArea = (area: Area) => {
-    setValidatedArea(area)
+    console.log('selectArea called with:', area)
+    
+    // If the area doesn't have a postal_code, use the current form postal_code
+    const areaWithPostalCode = {
+      ...area,
+      postal_code: area.postal_code || postalCode || ''
+    }
+    
+    console.log('Area after postal_code fix:', areaWithPostalCode)
+    
+    setValidatedArea(areaWithPostalCode)
     setSearchResults([]) // Clear search results immediately
     setIsAreaConfirmed(true) // Mark area as confirmed to prevent re-validation
     

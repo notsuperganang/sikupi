@@ -227,6 +227,7 @@ export default function CheckoutPageClient() {
                 </div>
                 <AddressForm
                   onAddressComplete={(address) => {
+                    console.log('CheckoutPageClient setting address:', address)
                     setShippingAddress(address)
                     // Remove duplicate toast - AddressForm already shows confirmation
                   }}
