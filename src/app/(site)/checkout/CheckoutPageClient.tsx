@@ -228,7 +228,7 @@ export default function CheckoutPageClient() {
                 <AddressForm
                   onAddressComplete={(address) => {
                     setShippingAddress(address)
-                    toast.success('Alamat tersimpan', 'Silakan lanjut ke pemilihan kurir')
+                    // Remove duplicate toast - AddressForm already shows confirmation
                   }}
                   initialAddress={shippingAddress}
                 />

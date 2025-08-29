@@ -31,6 +31,7 @@ interface Area {
   postal_code: string
   city: string
   province: string
+  country?: string
   full_name: string
 }
 
@@ -44,6 +45,7 @@ export default function AddressForm({ onAddressComplete, initialAddress }: Addre
   const [isValidating, setIsValidating] = useState(false)
   const [validatedArea, setValidatedArea] = useState<Area | null>(null)
   const [searchResults, setSearchResults] = useState<Area[]>([])
+  const [isAreaConfirmed, setIsAreaConfirmed] = useState(false) // Flag to prevent re-validation
   
   const {
     register,
@@ -69,11 +71,29 @@ export default function AddressForm({ onAddressComplete, initialAddress }: Addre
   const postalCode = watch('postal_code')
   const city = watch('city')
 
+  // Reset area confirmation when postal code changes significantly
+  useEffect(() => {
+    if (validatedArea && postalCode !== validatedArea.postal_code) {
+      // Only reset if the postal code is significantly different (not just a minor edit)
+      if (!postalCode || postalCode.length < 4) {
+        setIsAreaConfirmed(false)
+        setValidatedArea(null)
+      }
+    }
+  }, [postalCode, validatedArea])
+
   // Validate postal code and city with Biteship
   useEffect(() => {
     const validateAddress = async () => {
       if (!postalCode || postalCode.length !== 5) {
         setValidatedArea(null)
+        setSearchResults([])
+        setIsAreaConfirmed(false)
+        return
+      }
+
+      // Skip validation if we have a confirmed area selection
+      if (isAreaConfirmed && validatedArea) {
         return
       }
 
@@ -89,34 +109,43 @@ export default function AddressForm({ onAddressComplete, initialAddress }: Addre
           setError('postal_code', { message: 'Kode pos tidak ditemukan' })
           setValidatedArea(null)
           setSearchResults([])
+          setIsAreaConfirmed(false)
           return
         }
 
         const areas = data.data.areas
         setSearchResults(areas)
 
-        // Auto-fill if exact match found
+        // Auto-fill if exact match found (postal code + city match)
         const exactMatch = areas.find((area: Area) => 
           area.postal_code === postalCode && 
-          area.city.toLowerCase().includes(city.toLowerCase())
+          area.city.toLowerCase() === city.toLowerCase()
         )
 
         if (exactMatch) {
           setValidatedArea(exactMatch)
-          setValue('city', exactMatch.city)
-          toast.success('Alamat tervalidasi', `${exactMatch.full_name}`)
+          setIsAreaConfirmed(true)
+          toast.success('Alamat tervalidasi', `${exactMatch.name}`)
         } else if (areas.length === 1) {
+          // Only auto-select if there's exactly one match
           setValidatedArea(areas[0])
-          setValue('city', areas[0].city)
-          toast.success('Alamat tervalidasi', `${areas[0].full_name}`)
+          setIsAreaConfirmed(true)
+          if (areas[0].city !== city) {
+            setValue('city', areas[0].city)
+          }
+          toast.success('Alamat tervalidasi', `${areas[0].name}`)
         } else {
+          // Multiple options available, user needs to choose
           setValidatedArea(null)
+          setIsAreaConfirmed(false)
         }
 
       } catch (error) {
         console.error('Address validation error:', error)
         setError('postal_code', { message: 'Gagal memvalidasi alamat' })
         setValidatedArea(null)
+        setIsAreaConfirmed(false)
+        setSearchResults([])
       } finally {
         setIsValidating(false)
       }
@@ -124,28 +153,42 @@ export default function AddressForm({ onAddressComplete, initialAddress }: Addre
 
     const timeoutId = setTimeout(validateAddress, 500)
     return () => clearTimeout(timeoutId)
-  }, [postalCode, city, setValue, setError, clearErrors, toast])
+  }, [postalCode, city, setValue, setError, clearErrors, toast, validatedArea, isAreaConfirmed])
 
   const onSubmit = (data: AddressFormData) => {
+    // Allow submission if we have a validated area, even if postal codes don't exactly match
+    // This handles cases where user selects an area but entered a slightly different postal code
     if (!validatedArea) {
-      setError('postal_code', { message: 'Alamat belum divalidasi' })
+      setError('postal_code', { message: 'Pilih area dari hasil pencarian atau pastikan kode pos valid' })
+      toast.error('Validasi diperlukan', 'Silakan pilih area dari hasil pencarian')
       return
     }
 
     const shippingAddress: ShippingAddress = {
       ...data,
       area_id: validatedArea.id,
+      // Use the validated area's postal code for shipping calculation
+      postal_code: validatedArea.postal_code,
     }
 
     onAddressComplete(shippingAddress)
+    toast.success('Alamat tersimpan', 'Lanjut ke pemilihan kurir pengiriman')
   }
 
   const selectArea = (area: Area) => {
     setValidatedArea(area)
-    setValue('city', area.city)
-    setValue('postal_code', area.postal_code)
-    setSearchResults([])
-    toast.success('Area dipilih', area.full_name)
+    setSearchResults([]) // Clear search results immediately
+    setIsAreaConfirmed(true) // Mark area as confirmed to prevent re-validation
+    
+    // Update city only if different
+    if (area.city !== city) {
+      setValue('city', area.city)
+    }
+    
+    // Don't update postal code - keep what user entered to avoid validation loop
+    // The validated area will be used for shipping calculation instead
+    
+    toast.success('Area berhasil dipilih', `${area.name} - Alamat siap disimpan`)
   }
 
   return (
@@ -254,21 +297,56 @@ export default function AddressForm({ onAddressComplete, initialAddress }: Addre
       {/* Area Search Results */}
       {searchResults.length > 1 && !validatedArea && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h4 className="font-medium text-blue-900 mb-2">Pilih Area yang Sesuai:</h4>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {searchResults.map((area) => (
+          <h4 className="font-medium text-blue-900 mb-3">
+            Ditemukan {searchResults.length} area untuk kode pos {postalCode}. Pilih yang sesuai:
+          </h4>
+          <div className="space-y-3 max-h-64 overflow-y-auto">
+            {searchResults.map((area, index) => (
               <button
                 key={area.id}
                 type="button"
                 onClick={() => selectArea(area)}
-                className="w-full text-left p-3 bg-white border border-blue-200 rounded hover:bg-blue-50 transition-colors"
+                className="w-full text-left p-4 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 group"
               >
-                <div className="font-medium text-blue-900">{area.name}</div>
-                <div className="text-sm text-blue-700">
-                  {area.city}, {area.province} - {area.postal_code}
+                <div className="space-y-2">
+                  {/* Primary area name - most prominent */}
+                  <div className="font-semibold text-blue-900 text-base group-hover:text-blue-800">
+                    {area.name}
+                  </div>
+                  
+                  {/* Location hierarchy */}
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-blue-700">
+                    <span className="inline-flex items-center gap-1">
+                      📍 {area.city}
+                    </span>
+                    <span className="text-blue-400">•</span>
+                    <span>{area.province}</span>
+                    <span className="text-blue-400">•</span>
+                    <span className="inline-flex items-center gap-1">
+                      📮 {area.postal_code}
+                    </span>
+                  </div>
+                  
+                  {/* Area type and ID for technical reference */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                      {area.type}
+                    </span>
+                    <span className="text-xs text-stone-500 font-mono">
+                      ID: {area.id}
+                    </span>
+                  </div>
+                  
+                  {/* Full address string */}
+                  <div className="text-xs text-stone-600 bg-stone-50 px-2 py-1 rounded border-l-2 border-blue-200">
+                    {area.full_name}
+                  </div>
                 </div>
               </button>
             ))}
+          </div>
+          <div className="mt-3 text-xs text-blue-600">
+            💡 Pilih area yang paling sesuai dengan alamat Anda untuk memastikan pengiriman akurat
           </div>
         </div>
       )}
@@ -288,13 +366,13 @@ export default function AddressForm({ onAddressComplete, initialAddress }: Addre
       <div className="flex justify-end">
         <Button
           type="submit"
-          disabled={!isValid || !validatedArea || isValidating}
+          disabled={!validatedArea || isValidating}
           className="bg-amber-600 hover:bg-amber-700 min-w-32"
         >
           {isValidating ? (
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
           ) : null}
-          Simpan Alamat
+          {validatedArea ? 'Simpan Alamat' : isValidating ? 'Memvalidasi...' : 'Pilih Area Dulu'}
         </Button>
       </div>
     </form>

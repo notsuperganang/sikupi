@@ -38,16 +38,11 @@ export default function OrderSummary({
             <div key={item.id} className="flex items-start gap-3">
               <div className="flex-shrink-0">
                 <FallbackImage
-                  src={item.image_urls?.[0] || ''}
+                  src={item.image_urls?.[0] || null}
                   alt={item.product_title}
                   className="w-12 h-12 object-cover rounded-lg bg-stone-100"
                   width={48}
                   height={48}
-                  fallback={
-                    <div className="w-12 h-12 bg-stone-200 rounded-lg flex items-center justify-center">
-                      <Package className="h-6 w-6 text-stone-400" />
-                    </div>
-                  }
                 />
               </div>
               
@@ -70,28 +65,67 @@ export default function OrderSummary({
       {/* Shipping Address */}
       {shippingAddress && (
         <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-4">
             <MapPin className="h-5 w-5 text-amber-600" />
             <h3 className="font-semibold">Alamat Pengiriman</h3>
           </div>
           
-          <div className="space-y-2 text-sm">
-            <p className="font-medium text-stone-900">
-              {shippingAddress.recipient_name}
-            </p>
-            <p className="text-stone-600">
-              {shippingAddress.phone}
-            </p>
-            <p className="text-stone-600">
-              {shippingAddress.address}
-            </p>
-            <p className="text-stone-600">
-              {shippingAddress.city}, {shippingAddress.postal_code}
-            </p>
-            {shippingAddress.notes && (
-              <p className="text-xs text-stone-500 italic">
-                Catatan: {shippingAddress.notes}
+          <div className="space-y-3">
+            {/* Recipient Info */}
+            <div className="bg-stone-50 rounded-lg p-3">
+              <div className="space-y-1">
+                <p className="font-semibold text-stone-900 text-base">
+                  {shippingAddress.recipient_name}
+                </p>
+                <div className="flex flex-wrap gap-4 text-sm text-stone-600">
+                  <span className="flex items-center gap-1">
+                    📞 {shippingAddress.phone}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    ✉️ {shippingAddress.email}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Address Details */}
+            <div>
+              <p className="text-sm font-medium text-stone-700 mb-2">Alamat Lengkap:</p>
+              <p className="text-sm text-stone-600 leading-relaxed bg-stone-50 p-3 rounded">
+                {shippingAddress.address}
               </p>
+            </div>
+
+            {/* Location Details */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs font-medium text-stone-500 mb-1">Kota/Kabupaten</p>
+                <p className="text-sm text-stone-700">{shippingAddress.city}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-stone-500 mb-1">Kode Pos</p>
+                <p className="text-sm text-stone-700">{shippingAddress.postal_code}</p>
+              </div>
+            </div>
+
+            {/* Area ID (for shipping reference) */}
+            {shippingAddress.area_id && (
+              <div className="border-t border-stone-200 pt-3">
+                <p className="text-xs text-stone-500">
+                  Area ID: <span className="font-mono text-stone-600">{shippingAddress.area_id}</span>
+                  <span className="ml-2 text-green-600">✓ Tervalidasi Biteship</span>
+                </p>
+              </div>
+            )}
+
+            {/* Notes */}
+            {shippingAddress.notes && (
+              <div className="border-t border-stone-200 pt-3">
+                <p className="text-xs font-medium text-stone-500 mb-1">Catatan Tambahan:</p>
+                <p className="text-sm text-stone-600 italic bg-amber-50 p-2 rounded border-l-3 border-amber-200">
+                  💡 {shippingAddress.notes}
+                </p>
+              </div>
             )}
           </div>
         </Card>
