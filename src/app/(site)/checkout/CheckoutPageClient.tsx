@@ -95,37 +95,24 @@ export default function CheckoutPageClient() {
     setCurrentStep(step)
   }
 
+  // Payment handling is now done directly in PaymentMethod component
+  // This function is kept for compatibility but may not be used
   const handleCompleteOrder = async () => {
     if (!canCompleteOrder) {
       toast.error('Data tidak lengkap', 'Silakan lengkapi semua informasi yang diperlukan')
       return
     }
 
-    setIsProcessing(true)
+    console.log('Order completion triggered via CheckoutPageClient (legacy path)')
+    console.log('Order data:', {
+      shippingAddress,
+      selectedCourier,
+      items,
+      totals
+    })
     
-    try {
-      // TODO: Implement order creation with Midtrans integration
-      console.log('Creating order with:', {
-        shippingAddress,
-        selectedCourier,
-        items,
-        totals
-      })
-      
-      // Placeholder for now
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      toast.success('Pesanan berhasil!', 'Anda akan diarahkan ke halaman pembayaran')
-      
-      // TODO: Redirect to Midtrans payment or order confirmation
-      // router.push('/orders/confirmation')
-      
-    } catch (error) {
-      console.error('Order creation failed:', error)
-      toast.error('Gagal membuat pesanan', 'Terjadi kesalahan, silakan coba lagi')
-    } finally {
-      setIsProcessing(false)
-    }
+    // Note: Actual payment processing now happens in PaymentMethod component
+    // This preserves the interface but delegates to the PaymentMethod component
   }
 
   // Show loading while initializing

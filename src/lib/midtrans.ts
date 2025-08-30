@@ -3,9 +3,13 @@ import { config } from './config'
 import { generateOrderId } from './utils'
 
 // Midtrans API endpoints
-const MIDTRANS_BASE_URL = config.midtrans.isProduction 
+const MIDTRANS_SNAP_URL = config.midtrans.isProduction 
   ? 'https://app.midtrans.com' 
   : 'https://app.sandbox.midtrans.com'
+
+const MIDTRANS_CORE_URL = config.midtrans.isProduction
+  ? 'https://api.midtrans.com'
+  : 'https://api.sandbox.midtrans.com'
 
 export interface CreateTransactionRequest {
   order_id: string
@@ -69,7 +73,7 @@ export class MidtransService {
    * Create a Snap payment token
    */
   async createSnapToken(request: CreateTransactionRequest): Promise<MidtransSnapResponse> {
-    const url = `${MIDTRANS_BASE_URL}/snap/v1/transactions`
+    const url = `${MIDTRANS_SNAP_URL}/snap/v1/transactions`
     
     const payload = {
       transaction_details: {
@@ -79,9 +83,9 @@ export class MidtransService {
       customer_details: request.customer_details,
       item_details: request.item_details,
       callbacks: {
-        finish: `${config.app.url}/checkout/success`,
-        error: `${config.app.url}/checkout/error`,
-        pending: `${config.app.url}/checkout/pending`
+        finish: `${config.app.url}/payment/result`,
+        error: `${config.app.url}/payment/result`,
+        pending: `${config.app.url}/payment/result`
       },
       expiry: {
         duration: 24,
@@ -142,7 +146,7 @@ export class MidtransService {
    * Get transaction status from Midtrans
    */
   async getTransactionStatus(orderId: string): Promise<MidtransNotification> {
-    const url = `${MIDTRANS_BASE_URL}/v2/${orderId}/status`
+    const url = `${MIDTRANS_CORE_URL}/v2/${orderId}/status`
     
     try {
       const response = await fetch(url, {
@@ -167,7 +171,7 @@ export class MidtransService {
    * Cancel transaction
    */
   async cancelTransaction(orderId: string): Promise<void> {
-    const url = `${MIDTRANS_BASE_URL}/v2/${orderId}/cancel`
+    const url = `${MIDTRANS_CORE_URL}/v2/${orderId}/cancel`
     
     try {
       const response = await fetch(url, {
