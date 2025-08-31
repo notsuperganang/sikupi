@@ -53,7 +53,13 @@
     background-position: 0% 0%;
     }
   }
-}
+  --animate-shiny-text: shiny-text 8s infinite
+;
+  @keyframes shiny-text {
+  0%, 90%, 100% {
+    background-position: calc(-100% - var(--shiny-width)) 0;}
+  30%, 60% {
+    background-position: calc(100% + var(--shiny-width)) 0;}}}
 
 @theme inline {
   --animate-cell-ripple: cell-ripple var(--duration, 200ms) ease-out none 1
@@ -72,10 +78,33 @@
   }
 }
 
+/* Custom scrollbar for filter sidebar */
+.filter-sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.filter-sidebar-scroll::-webkit-scrollbar-track {
+  background: #f5f5f4;
+  border-radius: 3px;
+}
+
+.filter-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #d6d3d1;
+  border-radius: 3px;
+}
+
+.filter-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: #a8a29e;
+}
+
+/* Smooth transition for filter sidebar positioning */
+.filter-sidebar-scroll {
+  transition: top 200ms cubic-bezier(0.4, 0.0, 0.2, 1), max-height 200ms cubic-bezier(0.4, 0.0, 0.2, 1);
+}
 
 :root {
   --radius: 0.625rem;
-  
+
   /* Sikupi Custom Color Palette - Based on logo color #6b4e3c */
   --sikupi-primary: #6b4e3c;         /* Main logo color - warm brown */
   --sikupi-primary-light: #8a6b5a;   /* Lighter version */
@@ -90,25 +119,25 @@
   --sikupi-primary-700: #4a3429;     /* Dark */
   --sikupi-primary-800: #3d2a20;     /* Very dark */
   --sikupi-primary-900: #2f1f18;     /* Darkest */
-  
+
   /* Coffee-themed complementary colors */
   --sikupi-coffee-light: #d4a574;    /* Light coffee/latte */
   --sikupi-coffee-medium: #a67c52;   /* Medium coffee */
   --sikupi-coffee-dark: #8b4513;     /* Dark coffee/espresso */
   --sikupi-coffee-bean: #3c2415;     /* Coffee bean brown */
-  
+
   /* Earth tones for waste/sustainability theme */
   --sikupi-earth-sand: #e6d3b7;      /* Sand/beige */
   --sikupi-earth-clay: #bc9a6a;      /* Clay brown */
   --sikupi-earth-soil: #5d4e37;      /* Rich soil */
   --sikupi-earth-forest: #4a5d3a;    /* Forest green */
-  
+
   /* Accent colors for UI elements */
   --sikupi-accent-amber: #f59e0b;     /* Warm amber for CTAs */
   --sikupi-accent-orange: #ea580c;    /* Orange for highlights */
   --sikupi-accent-green: #16a34a;     /* Green for success/sustainability */
   --sikupi-accent-red: #dc2626;      /* Red for errors/warnings */
-  
+
   /* Neutral grays that work with brown palette */
   --sikupi-gray-50: #fafaf9;
   --sikupi-gray-100: #f5f5f4;
@@ -170,25 +199,25 @@
   --sikupi-primary-700: #c4ab96;     
   --sikupi-primary-800: #ddd0c4;     
   --sikupi-primary-900: #f0ebe6;     
-  
+
   /* Coffee colors adjusted for dark mode */
   --sikupi-coffee-light: #e6d3b7;    
   --sikupi-coffee-medium: #d4a574;   
   --sikupi-coffee-dark: #a67c52;     
   --sikupi-coffee-bean: #8b4513;     
-  
+
   /* Earth tones for dark mode */
   --sikupi-earth-sand: #5d4e37;      
   --sikupi-earth-clay: #8a6b5a;      
   --sikupi-earth-soil: #bc9a6a;      
   --sikupi-earth-forest: #6d8a5d;    
-  
+
   /* Accent colors remain vibrant in dark mode */
   --sikupi-accent-amber: #fbbf24;     
   --sikupi-accent-orange: #fb923c;    
   --sikupi-accent-green: #22c55e;     
   --sikupi-accent-red: #ef4444;      
-  
+
   /* Dark mode grays */
   --sikupi-gray-50: #1c1917;
   --sikupi-gray-100: #292524;
@@ -250,7 +279,7 @@
     color: var(--sikupi-gray-700);
     transition: color 0.2s ease-in-out;
   }
-  
+
   .sikupi-nav-link:hover {
     color: var(--sikupi-primary) !important;
   }

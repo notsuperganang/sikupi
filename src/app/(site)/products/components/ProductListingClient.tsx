@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useScroll, useMotionValueEvent } from 'framer-motion'
 import { Filter, LayoutGrid, LayoutList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useProductsData } from '@/hooks/useProducts'
@@ -38,6 +39,19 @@ export function ProductListingClient({
   const router = useRouter()
   const searchParams = useSearchParams()
   
+  // Scroll tracking for dynamic navbar positioning
+  const { scrollY } = useScroll()
+  const [isNavbarCompact, setIsNavbarCompact] = useState(false)
+  
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    setIsNavbarCompact(latest > 100)
+  })
+  
+  // Calculate dynamic top position for filter sidebar
+  const filterSidebarTop = isNavbarCompact 
+    ? '6rem'  // Higher position when navbar is compact
+    : '7rem'  // Higher position when navbar is full
+
   // State management
   const [filters, setFilters] = useState<ProductFilters>(() => {
     // Try to get filters from URL params first, then fall back to initial filters
@@ -166,12 +180,24 @@ export function ProductListingClient({
           <div className="flex gap-6">
             {/* Desktop Sidebar */}
             <div className="hidden lg:block w-64 flex-shrink-0">
-              <FilterSidebar
-                filters={filters}
-                onFiltersChange={handleFiltersChange}
-                onClearFilters={handleClearFilters}
-                className="bg-white rounded-xl p-6 shadow-lg border border-stone-200"
-              />
+              <div 
+                className="sticky overflow-y-auto filter-sidebar-scroll" 
+                style={{
+                  top: filterSidebarTop,
+                  maxHeight: isNavbarCompact 
+                    ? 'calc(100vh - 6rem - 2rem)' // Compact navbar
+                    : 'calc(100vh - 7rem - 2rem)', // Full navbar
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#d6d3d1 #f5f5f4'
+                }}
+              >
+                <FilterSidebar
+                  filters={filters}
+                  onFiltersChange={handleFiltersChange}
+                  onClearFilters={handleClearFilters}
+                  className="bg-white rounded-xl p-6 shadow-lg border border-stone-200"
+                />
+              </div>
             </div>
 
             {/* Main Content */}

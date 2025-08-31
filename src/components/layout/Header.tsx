@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ShoppingCart, User, LogOut, Package, UserCircle, Smile } from 'lucide-react'
+import { ShoppingCart, LogOut, Package, UserCircle } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useCart } from '@/hooks/useCart'
 import { useCartDrawer } from '@/lib/cart-context'
@@ -27,9 +27,10 @@ const Header = () => {
 
   // Navigation items - Indonesian copy
   const navItems = [
+    { name: "Beranda", link: "/" },
     { name: "Produk", link: "/products" },
     { name: "Majalah", link: "/magazine" },
-    { name: "Ampas Analyzer", link: "/analyzer" },
+    { name: "Ampas Analyzer", link: "/ampas-analyzer" },
     { name: "Chatbot", link: "/chat" }
   ]
 
@@ -216,7 +217,7 @@ const Header = () => {
                 <Link
                   key={idx}
                   href={item.link}
-                  className="block w-full px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
+                  className="block w-full px-4 py-3 text-gray-700 hover:bg-orange-50 rounded-md transition-colors"
                   onClick={handleMobileMenuClose}
                 >
                   {item.name}
