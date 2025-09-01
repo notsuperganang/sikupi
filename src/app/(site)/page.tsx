@@ -1,5 +1,7 @@
 import { LandingHero } from "@/components/ui/landing-hero";
 import { EcosystemBeamDemo, FeaturesSection } from "@/components/landing";
+import { SikupiTracker } from "@/components/landing/SikupiTracker";
+import { CTASection } from "@/components/landing/CTASection";
 
 export default function Home() {
   return (
@@ -13,6 +15,10 @@ export default function Home() {
       </div>
       
       <FeaturesSection />
+      
+      <SikupiTracker />
+      
+      <CTASection />
     </div>
   );
 }
