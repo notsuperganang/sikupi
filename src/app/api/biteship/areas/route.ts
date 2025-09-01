@@ -26,16 +26,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Format response for frontend
-    const formattedAreas = areasResponse.areas.map(area => ({
-      id: area.id,
-      name: area.name,
-      type: area.type,
-      postal_code: area.postal_code,
-      city: area.administrative_division_level_2_name,
-      province: area.administrative_division_level_1_name,
-      country: area.country_name,
-      full_name: `${area.name}, ${area.administrative_division_level_2_name}, ${area.administrative_division_level_1_name}`,
-    }))
+    const formattedAreas = areasResponse.areas.map(area => {
+      // console.log('Raw area from Biteship:', area) // Debug the raw response
+      return {
+        id: area.id,
+        name: area.name,
+        type: area.type,
+        postal_code: area.postal_code || '', // Ensure postal_code is never undefined
+        city: area.administrative_division_level_2_name,
+        province: area.administrative_division_level_1_name,
+        country: area.country_name,
+        full_name: `${area.name}, ${area.administrative_division_level_2_name}, ${area.administrative_division_level_1_name}`,
+      }
+    })
 
     return NextResponse.json({
       success: true,

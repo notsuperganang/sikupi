@@ -142,6 +142,11 @@ export async function POST(request: NextRequest) {
     
     const destinationAreaId = validatedData.destination_address.area_id
     
+    // Comprehensive list of Indonesian couriers
+    const allCouriers = 'jne,pos,tiki,sicepat,jnt,ninja,wahana,rex,ide,lion,sap,anteraja,jet,rpx,first,pandu,dakota,kurir,indah,pahala,pigeon'
+    console.log(`📦 Requesting rates for destination: ${destinationAreaId}`)
+    console.log(`🚚 Requesting ${allCouriers.split(',').length} couriers: ${allCouriers}`)
+    
     const ratesRequest = {
       // Origin: Use warehouse area_id
       origin_area_id: originAreaId,
@@ -149,8 +154,10 @@ export async function POST(request: NextRequest) {
       // Destination: Use provided area_id
       destination_area_id: destinationAreaId,
       
-      // Couriers: Use provided list or default Indonesian couriers
-      couriers: validatedData.couriers || 'jne,pos,tiki,sicepat,jnt,ninja,wahana,rex,ide,lion,sap',
+      // Couriers: Use provided list or comprehensive Indonesian courier list
+      // Major couriers: JNE, POS, TIKI, SiCepat, J&T, Ninja Xpress, Wahana, REX, IDE, Lion Parcel, SAP
+      // Additional couriers: AnterAja, JET, RPX, First Logistics, Pandu Logistics, Dakota Cargo, etc.
+      couriers: validatedData.couriers || allCouriers,
       
       items: shippingItems,
     }
@@ -162,6 +169,22 @@ export async function POST(request: NextRequest) {
     if (!ratesResponse) {
       // Cache miss - fetch from Biteship API
       console.log('Cache miss - fetching rates from Biteship API')
+      console.log('📦 Rates request to Biteship:')
+      console.log('📍 Origin Area ID:', ratesRequest.origin_area_id)
+      console.log('📍 Destination Area ID:', ratesRequest.destination_area_id)
+      console.log('🚚 Couriers requested:', ratesRequest.couriers)
+      console.log('📦 Items details:')
+      ratesRequest.items.forEach((item, index) => {
+        console.log(`  Item ${index + 1}:`)
+        console.log(`    Name: ${item.name}`)
+        console.log(`    Weight: ${item.weight}g (${item.weight/1000}kg)`)
+        console.log(`    Dimensions: ${item.length}×${item.width}×${item.height}cm`)
+        console.log(`    Value: Rp ${item.value.toLocaleString()}`)
+      })
+      const totalWeight = ratesRequest.items.reduce((sum, item) => sum + item.weight, 0)
+      const totalValue = ratesRequest.items.reduce((sum, item) => sum + item.value, 0)
+      console.log(`📊 TOTALS - Weight: ${totalWeight}g (${totalWeight/1000}kg), Value: Rp ${totalValue.toLocaleString()}`)
+      
       ratesResponse = await biteship.getRates(ratesRequest)
       
       // Cache the response if successful
@@ -179,6 +202,20 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
+
+    // Log availability results
+    const availableCouriers = ratesResponse.pricing.length
+    const uniqueCompanies = [...new Set(ratesResponse.pricing.map((rate: any) => rate.company))]
+    console.log(`✅ Found ${availableCouriers} shipping options from ${uniqueCompanies.length} companies: [${uniqueCompanies.join(', ')}]`)
+    
+    // Log pricing details for analysis
+    console.log('💰 Pricing breakdown:')
+    ratesResponse.pricing.forEach((rate: any, index: number) => {
+      const pricePerKg = Math.round(rate.price / (ratesRequest.items.reduce((sum, item) => sum + item.weight, 0) / 1000))
+      console.log(`  ${index + 1}. ${rate.company.toUpperCase()} ${rate.courier_service_name}:`)
+      console.log(`     Price: Rp ${rate.price.toLocaleString()} (~Rp ${pricePerKg.toLocaleString()}/kg)`)
+      console.log(`     Duration: ${rate.duration} | Type: ${rate.service_type}`)
+    })
 
     // Format response for frontend
     const formattedRates = ratesResponse.pricing.map((rate: any) => ({

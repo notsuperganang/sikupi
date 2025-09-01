@@ -127,29 +127,99 @@ export async function GET(
     // If there's a Biteship order, get real tracking data
     if (orderData.biteship_order_id) {
       try {
-        console.log(`Fetching Biteship tracking for order ${orderData.biteship_order_id}`)
+        console.log(`🔄 [TRACKING] Processing Biteship order ${orderData.biteship_order_id}`)
         
-        const biteshipTracking = await biteship.trackOrder(orderData.biteship_order_id)
+        // First, try to get latest order details to update waybill_id if needed
+        let updatedWaybillId = orderData.tracking_number
+        let trackingId = orderData.biteship_reference_id
+        try {
+          console.log(`📋 [TRACKING] Fetching latest order details for tracking info`)
+          const orderDetails = await biteship.getOrderDetails(orderData.biteship_order_id)
+          
+          // Update waybill_id if available
+          if (orderDetails.waybill_id && orderDetails.waybill_id !== orderData.tracking_number) {
+            console.log(`📝 [TRACKING] New waybill_id found: ${orderDetails.waybill_id}`)
+            updatedWaybillId = orderDetails.waybill_id
+          }
+          
+          // Update tracking_id if available
+          if ((orderDetails.courier as any)?.tracking_id && (orderDetails.courier as any).tracking_id !== trackingId) {
+            console.log(`📝 [TRACKING] New tracking_id found: ${(orderDetails.courier as any).tracking_id}`)
+            trackingId = (orderDetails.courier as any).tracking_id
+          }
+          
+          // Update database with new info
+          if (updatedWaybillId !== orderData.tracking_number || trackingId !== orderData.biteship_reference_id) {
+            await (supabaseAdmin as any)
+              .from('orders')
+              .update({ 
+                tracking_number: updatedWaybillId,
+                biteship_reference_id: trackingId,
+                shipping_status: trackingId ? 'shipped' : 'pending',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', orderData.id)
+            
+            console.log(`✅ [TRACKING] Database updated - waybill: ${updatedWaybillId}, tracking_id: ${trackingId}`)
+          }
+        } catch (detailsError) {
+          console.log(`⚠️  [TRACKING] Could not fetch order details: ${detailsError}`)
+        }
         
-        // Add Biteship tracking information
-        trackingResponse.biteship_tracking = {
-          order_id: biteshipTracking.order_id,
-          status: biteshipTracking.status,
-          waybill_id: biteshipTracking.waybill_id,
-          courier: biteshipTracking.courier,
-          origin: biteshipTracking.origin,
-          destination: biteshipTracking.destination,
-          tracking_url: `https://tracking.biteship.com/${orderData.tracking_number}`,
-          history: biteshipTracking.history?.map(h => ({
-            status: h.status,
-            note: h.note,
-            updated_at: h.updated_at,
-            timestamp: h.updated_at
-          })) || []
+        // Now try to get tracking data if we have a tracking_id
+        let biteshipTracking: any = null
+        if (trackingId) {
+          console.log(`🔍 [TRACKING] Fetching tracking data using tracking_id: ${trackingId}`)
+          
+          // Add timeout to prevent hanging
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Tracking request timeout')), 5000)
+          )
+          
+          biteshipTracking = await Promise.race([
+            biteship.trackOrder(trackingId), // Use tracking_id instead of biteship_order_id
+            timeoutPromise
+          ])
+        } else {
+          console.log(`⚠️  [TRACKING] No tracking_id available yet, skipping tracking API`)
+        }
+        
+        // Add normalized Biteship tracking information if available
+        if (biteshipTracking) {
+          trackingResponse.biteship_tracking = {
+            courier: (biteshipTracking as any)?.courier?.company || orderData.courier_company,
+            waybill: (biteshipTracking as any)?.waybill_id || updatedWaybillId,
+            status: normalizeTrackingStatus((biteshipTracking as any)?.status),
+            eta: (biteshipTracking as any)?.delivery?.datetime || null,
+            updatedAt: (biteshipTracking as any)?.updated_at || new Date().toISOString(),
+            history: ((biteshipTracking as any)?.history || []).map((h: any) => ({
+              time: h?.updated_at,
+              status: h?.status,
+              location: extractLocation(h?.note) || null,
+              note: h?.note
+            }))
+          }
+        } else if (updatedWaybillId) {
+          // If we have waybill but no tracking data yet, provide basic info
+          trackingResponse.biteship_tracking = {
+            courier: orderData.courier_company,
+            waybill: updatedWaybillId,
+            status: 'pending',
+            eta: null,
+            updatedAt: new Date().toISOString(),
+            history: [
+              {
+                time: new Date().toISOString(),
+                status: 'Order created',
+                location: null,
+                note: 'Waybill number assigned, tracking will be available shortly'
+              }
+            ]
+          }
         }
         
         // Enhance timeline with Biteship data
-        if (biteshipTracking.history && biteshipTracking.history.length > 0) {
+        if (biteshipTracking?.history && biteshipTracking.history.length > 0) {
           // Add shipment created
           trackingResponse.timeline.push({
             status: 'shipped',
@@ -306,6 +376,27 @@ function extractLocation(note: string): string | null {
   }
   
   return null
+}
+
+/**
+ * Normalize tracking status to common format
+ */
+function normalizeTrackingStatus(status: string | null): string | null {
+  if (!status) return null
+  
+  const statusMapping: Record<string, string> = {
+    'picked': 'picked_up',
+    'picked_up': 'picked_up', 
+    'drop_off': 'in_transit',
+    'on_process': 'in_transit',
+    'in_transit': 'in_transit',
+    'delivered': 'delivered',
+    'completed': 'delivered',
+    'cancelled': 'cancelled',
+    'return_to_shipper': 'returned'
+  }
+  
+  return statusMapping[status.toLowerCase()] || status
 }
 
 /**

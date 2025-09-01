@@ -180,3 +180,83 @@ export interface ShippingAddress {
   postal_code: string;
   area_id: string;
 }
+
+// Payment Flow Types
+export interface CreatePaymentRequest {
+  buyer_id: string;
+  items: Array<{
+    product_id: number;
+    quantity: number;
+    coffee_type?: string;
+    grind_level?: string;
+    condition?: string;
+  }>;
+  shipping_address: ShippingAddress;
+  shipping_fee_idr: number;
+  courier_company?: string;
+  courier_service?: string;
+  notes?: string;
+}
+
+export interface CreatePaymentResponse {
+  success: boolean;
+  data?: {
+    order_id: number;
+    midtrans_order_id: string;
+    snap_token: string;
+    redirect_url: string;
+    total_amount: number;
+    formatted_amount: string;
+    expires_at: string;
+  };
+  error?: string;
+  details?: string | string[];
+}
+
+export interface PaymentResult {
+  status_code: string;
+  status_message: string;
+  transaction_id: string;
+  order_id: string;
+  merchant_id?: string;
+  gross_amount: string;
+  currency: string;
+  payment_type: string;
+  transaction_time: string;
+  transaction_status: string;
+  va_numbers?: Array<{
+    bank: string;
+    va_number: string;
+  }>;
+  fraud_status?: string;
+  masked_card?: string;
+  bank?: string;
+}
+
+export interface PaymentCallbacks {
+  onSuccess?: (result: PaymentResult) => void;
+  onPending?: (result: PaymentResult) => void;
+  onError?: (result: PaymentResult) => void;
+  onClose?: () => void;
+}
+
+export interface OrderDetails {
+  id: number;
+  midtrans_order_id: string;
+  total_idr: number;
+  status: 'new' | 'pending_payment' | 'paid' | 'packed' | 'shipped' | 'completed' | 'cancelled';
+  created_at: string;
+  updated_at: string;
+  expires_at?: string;
+  shipping_address?: ShippingAddress;
+  order_items: Array<{
+    id: number;
+    product_id: number;
+    product_title: string;
+    qty: number;
+    price_idr: number;
+    coffee_type?: string;
+    grind_level?: string;
+    condition?: string;
+  }>;
+}

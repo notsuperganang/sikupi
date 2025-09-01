@@ -4,6 +4,13 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { createClient } from '@supabase/supabase-js'
 import { headers } from 'next/headers'
 import type { Database } from '@/types/database'
+import { 
+  uploadProductImages, 
+  deleteProductImages,
+  cleanupFailedUpload, 
+  extractImageFiles, 
+  parseProductFormData 
+} from '@/lib/image-upload'
 
 // Product update validation schema - all fields optional for partial updates
 const UpdateProductSchema = z.object({
@@ -99,6 +106,86 @@ const DeleteProductParamsSchema = z.object({
   id: z.string().transform(val => parseInt(val)).refine(val => val > 0, 'Product ID must be positive')
 })
 
+// PATCH method for partial updates (like toggle published status)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Check admin permissions
+    const permissionCheck = await checkAdminPermissions(request)
+    
+    if (!permissionCheck.isAdmin) {
+      return NextResponse.json(
+        { error: permissionCheck.error || 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Validate route parameters
+    const resolvedParams = await params
+    const validatedParams = UpdateProductParamsSchema.parse(resolvedParams)
+    
+    // Check if product exists
+    const { data: existingProduct, error: fetchError } = await supabaseAdmin
+      .from('products')
+      .select('id, published')
+      .eq('id', validatedParams.id)
+      .single()
+    
+    if (fetchError || !existingProduct) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Parse request body for partial update
+    const body = await request.json()
+    const validatedData = UpdateProductSchema.parse(body)
+    
+    // Update the product
+    const { data: updatedProduct, error: updateError } = await (supabaseAdmin as any)
+      .from('products')
+      .update(validatedData)
+      .eq('id', validatedParams.id)
+      .select()
+      .single()
+    
+    if (updateError) {
+      console.error('Product patch error:', updateError)
+      return NextResponse.json(
+        { error: 'Failed to update product', details: updateError.message },
+        { status: 500 }
+      )
+    }
+    
+    return NextResponse.json({
+      success: true,
+      data: updatedProduct,
+      message: 'Product updated successfully'
+    })
+    
+  } catch (error) {
+    console.error('Admin product patch API error:', error)
+    
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid product data', 
+          details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`) 
+        },
+        { status: 400 }
+      )
+    }
+    
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -118,11 +205,7 @@ export async function PUT(
     const resolvedParams = await params
     const validatedParams = UpdateProductParamsSchema.parse(resolvedParams)
     
-    // Parse and validate request body
-    const body = await request.json()
-    const validatedData = UpdateProductSchema.parse(body)
-    
-    // Check if product exists
+    // Check if product exists and get current data
     const { data: existingProduct, error: fetchError } = await supabaseAdmin
       .from('products')
       .select('*')
@@ -136,6 +219,35 @@ export async function PUT(
       )
     }
     
+    const currentProduct = existingProduct as any
+    
+    // Check content type to determine parsing method
+    const contentType = request.headers.get('content-type') || ''
+    let validatedData: any
+    let imageFiles: File[] = []
+    let keepExistingImages = true
+    
+    if (contentType.includes('multipart/form-data')) {
+      // Handle FormData with images
+      const formData = await request.formData()
+      
+      // Extract image files
+      imageFiles = extractImageFiles(formData)
+      
+      // Parse product data from FormData
+      const productData = parseProductFormData(formData)
+      
+      // Check if we should keep existing images (only replace if new images provided)
+      keepExistingImages = imageFiles.length === 0
+      
+      // Validate the parsed data
+      validatedData = UpdateProductSchema.parse(productData)
+    } else {
+      // Handle JSON (backward compatibility)
+      const body = await request.json()
+      validatedData = UpdateProductSchema.parse(body)
+    }
+    
     // Prepare update data
     const updateData = { ...validatedData }
     
@@ -145,7 +257,6 @@ export async function PUT(
     }
     
     // Check for existing SKU if being updated (and different from current)
-    const currentProduct = existingProduct as any
     if (validatedData.sku && validatedData.sku !== currentProduct.sku) {
       const { data: existingSkuProduct } = await supabaseAdmin
         .from('products')
@@ -177,7 +288,48 @@ export async function PUT(
       }
     }
     
-    // Update the product
+    // Handle image management
+    let finalImageUrls: string[] = currentProduct.image_urls || []
+    let oldImageUrls: string[] = []
+    
+    if (imageFiles.length > 0) {
+      try {
+        // If new images are provided, we'll replace all existing images
+        oldImageUrls = [...finalImageUrls] // Keep reference for cleanup
+        
+        // Upload new images
+        const { uploadedUrls, errors } = await uploadProductImages(validatedParams.id, imageFiles)
+        
+        if (errors.length > 0) {
+          console.error('Image upload errors:', errors)
+          return NextResponse.json(
+            { error: 'Some images failed to upload', details: errors },
+            { status: 400 }
+          )
+        }
+        
+        // Set new image URLs (replacing all existing ones)
+        finalImageUrls = uploadedUrls
+        updateData.image_urls = finalImageUrls
+        
+      } catch (uploadError) {
+        console.error('Image upload exception:', uploadError)
+        return NextResponse.json(
+          { 
+            error: 'Image upload failed', 
+            details: uploadError instanceof Error ? uploadError.message : 'Unknown upload error'
+          },
+          { status: 500 }
+        )
+      }
+    } else if (validatedData.image_urls !== undefined) {
+      // If image_urls is explicitly provided in the data (JSON mode), use those
+      oldImageUrls = currentProduct.image_urls || []
+      finalImageUrls = validatedData.image_urls || []
+      updateData.image_urls = finalImageUrls
+    }
+    
+    // Update the product in database
     const { data: updatedProduct, error: updateError } = await (supabaseAdmin as any)
       .from('products')
       .update(updateData)
@@ -187,10 +339,30 @@ export async function PUT(
     
     if (updateError) {
       console.error('Product update error:', updateError)
+      
+      // If product update failed and we uploaded new images, clean them up
+      if (imageFiles.length > 0 && finalImageUrls.length > 0) {
+        await cleanupFailedUpload(finalImageUrls)
+      }
+      
       return NextResponse.json(
         { error: 'Failed to update product', details: updateError.message },
         { status: 500 }
       )
+    }
+    
+    // Success! Now clean up old images if we replaced them
+    if (imageFiles.length > 0 && oldImageUrls.length > 0) {
+      try {
+        const cleanupResult = await deleteProductImages(oldImageUrls)
+        if (cleanupResult.errors.length > 0) {
+          console.warn('Some old images could not be deleted:', cleanupResult.errors)
+          // Don't fail the update for cleanup errors
+        }
+      } catch (cleanupError) {
+        console.error('Error cleaning up old images:', cleanupError)
+        // Don't fail the update for cleanup errors
+      }
     }
     
     // Format response - Type assertion for TypeScript
@@ -209,7 +381,7 @@ export async function PUT(
       price_idr: productData.price_idr,
       stock_qty: productData.stock_qty,
       unit: productData.unit,
-      image_urls: productData.image_urls || [],
+      image_urls: finalImageUrls,
       published: productData.published,
       created_at: productData.created_at,
       updated_at: productData.updated_at,
@@ -262,10 +434,10 @@ export async function DELETE(
     const resolvedParams = await params
     const validatedParams = DeleteProductParamsSchema.parse(resolvedParams)
     
-    // Check if product exists
+    // Check if product exists and get current data including images
     const { data: existingProduct, error: fetchError } = await supabaseAdmin
       .from('products')
-      .select('id, title, published, stock_qty')
+      .select('id, title, published, stock_qty, image_urls')
       .eq('id', validatedParams.id)
       .single()
     
@@ -336,7 +508,7 @@ export async function DELETE(
       }
     }
     
-    // Delete the product
+    // Delete the product from database
     const { error: deleteError } = await supabaseAdmin
       .from('products')
       .delete()
@@ -348,6 +520,22 @@ export async function DELETE(
         { error: 'Failed to delete product', details: deleteError.message },
         { status: 500 }
       )
+    }
+    
+    // Clean up product images from storage after successful deletion
+    if (productData.image_urls && productData.image_urls.length > 0) {
+      try {
+        const cleanupResult = await deleteProductImages(productData.image_urls)
+        if (cleanupResult.errors.length > 0) {
+          console.warn('Some product images could not be deleted:', cleanupResult.errors)
+          // Don't fail the deletion for cleanup errors, but log them
+        } else {
+          console.log('Successfully cleaned up product images')
+        }
+      } catch (cleanupError) {
+        console.error('Error cleaning up product images:', cleanupError)
+        // Don't fail the deletion for cleanup errors
+      }
     }
     
     return NextResponse.json({

@@ -41,12 +41,127 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --animate-shine: shine var(--duration) infinite linear;
+  @keyframes shine {
+  0% {
+    background-position: 0% 0%;
+    }
+  50% {
+    background-position: 100% 100%;
+    }
+  to {
+    background-position: 0% 0%;
+    }
+  }
+  --animate-shiny-text: shiny-text 8s infinite
+;
+  @keyframes shiny-text {
+  0%, 90%, 100% {
+    background-position: calc(-100% - var(--shiny-width)) 0;}
+  30%, 60% {
+    background-position: calc(100% + var(--shiny-width)) 0;}}
+  --animate-background-position-spin: background-position-spin 3000ms infinite alternate;
+  @keyframes background-position-spin {
+  0% {
+    background-position: top center;}
+  100% {
+    background-position: bottom center;}}
+  @keyframes shiny-text {
+  0%, 90%, 100% {
+    background-position: calc(-100% - var(--shiny-width)) 0;}
+  30%, 60% {
+    background-position: calc(100% + var(--shiny-width)) 0;}}}
+
+@theme inline {
+  --animate-cell-ripple: cell-ripple var(--duration, 200ms) ease-out none 1
+  var(--delay, 0ms);
+
+  @keyframes cell-ripple {
+    0% {
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 0.8;
+    }
+    100% {
+      opacity: 0.4;
+    }
+  }
+}
+
+/* Custom scrollbar for filter sidebar */
+.filter-sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.filter-sidebar-scroll::-webkit-scrollbar-track {
+  background: #f5f5f4;
+  border-radius: 3px;
+}
+
+.filter-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #d6d3d1;
+  border-radius: 3px;
+}
+
+.filter-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: #a8a29e;
+}
+
+/* Smooth transition for filter sidebar positioning */
+.filter-sidebar-scroll {
+  transition: top 200ms cubic-bezier(0.4, 0.0, 0.2, 1), max-height 200ms cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+
+  /* Sikupi Custom Color Palette - Based on logo color #6b4e3c */
+  --sikupi-primary: #6b4e3c;         /* Main logo color - warm brown */
+  --sikupi-primary-light: #8a6b5a;   /* Lighter version */
+  --sikupi-primary-dark: #4a3429;    /* Darker version */
+  --sikupi-primary-50: #faf8f6;      /* Very light tint */
+  --sikupi-primary-100: #f0ebe6;     /* Light tint */
+  --sikupi-primary-200: #ddd0c4;     /* Light */
+  --sikupi-primary-300: #c4ab96;     /* Medium light */
+  --sikupi-primary-400: #a5836b;     /* Medium */
+  --sikupi-primary-500: #6b4e3c;     /* Base color */
+  --sikupi-primary-600: #5d4234;     /* Medium dark */
+  --sikupi-primary-700: #4a3429;     /* Dark */
+  --sikupi-primary-800: #3d2a20;     /* Very dark */
+  --sikupi-primary-900: #2f1f18;     /* Darkest */
+
+  /* Coffee-themed complementary colors */
+  --sikupi-coffee-light: #d4a574;    /* Light coffee/latte */
+  --sikupi-coffee-medium: #a67c52;   /* Medium coffee */
+  --sikupi-coffee-dark: #8b4513;     /* Dark coffee/espresso */
+  --sikupi-coffee-bean: #3c2415;     /* Coffee bean brown */
+
+  /* Earth tones for waste/sustainability theme */
+  --sikupi-earth-sand: #e6d3b7;      /* Sand/beige */
+  --sikupi-earth-clay: #bc9a6a;      /* Clay brown */
+  --sikupi-earth-soil: #5d4e37;      /* Rich soil */
+  --sikupi-earth-forest: #4a5d3a;    /* Forest green */
+
+  /* Accent colors for UI elements */
+  --sikupi-accent-amber: #f59e0b;     /* Warm amber for CTAs */
+  --sikupi-accent-orange: #ea580c;    /* Orange for highlights */
+  --sikupi-accent-green: #16a34a;     /* Green for success/sustainability */
+  --sikupi-accent-red: #dc2626;      /* Red for errors/warnings */
+
+  /* Neutral grays that work with brown palette */
+  --sikupi-gray-50: #fafaf9;
+  --sikupi-gray-100: #f5f5f4;
+  --sikupi-gray-200: #e7e5e4;
+  --sikupi-gray-300: #d6d3d1;
+  --sikupi-gray-400: #a8a29e;
+  --sikupi-gray-500: #78716c;
+  --sikupi-gray-600: #57534e;
+  --sikupi-gray-700: #44403c;
+  --sikupi-gray-800: #292524;
+  --sikupi-gray-900: #1c1917;
+
+  /* shadcn/ui default colors (unchanged) */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -76,9 +191,57 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
 }
 
 .dark {
+  /* Sikupi Custom Color Palette - Dark Mode Variants */
+  --sikupi-primary: #8a6b5a;         /* Lighter in dark mode */
+  --sikupi-primary-light: #a5836b;   /* Even lighter */
+  --sikupi-primary-dark: #6b4e3c;    /* Original as dark variant */
+  --sikupi-primary-50: #2f1f18;      /* Inverted for dark backgrounds */
+  --sikupi-primary-100: #3d2a20;     
+  --sikupi-primary-200: #4a3429;     
+  --sikupi-primary-300: #5d4234;     
+  --sikupi-primary-400: #6b4e3c;     
+  --sikupi-primary-500: #8a6b5a;     /* Base in dark mode */
+  --sikupi-primary-600: #a5836b;     
+  --sikupi-primary-700: #c4ab96;     
+  --sikupi-primary-800: #ddd0c4;     
+  --sikupi-primary-900: #f0ebe6;     
+
+  /* Coffee colors adjusted for dark mode */
+  --sikupi-coffee-light: #e6d3b7;    
+  --sikupi-coffee-medium: #d4a574;   
+  --sikupi-coffee-dark: #a67c52;     
+  --sikupi-coffee-bean: #8b4513;     
+
+  /* Earth tones for dark mode */
+  --sikupi-earth-sand: #5d4e37;      
+  --sikupi-earth-clay: #8a6b5a;      
+  --sikupi-earth-soil: #bc9a6a;      
+  --sikupi-earth-forest: #6d8a5d;    
+
+  /* Accent colors remain vibrant in dark mode */
+  --sikupi-accent-amber: #fbbf24;     
+  --sikupi-accent-orange: #fb923c;    
+  --sikupi-accent-green: #22c55e;     
+  --sikupi-accent-red: #ef4444;      
+
+  /* Dark mode grays */
+  --sikupi-gray-50: #1c1917;
+  --sikupi-gray-100: #292524;
+  --sikupi-gray-200: #44403c;
+  --sikupi-gray-300: #57534e;
+  --sikupi-gray-400: #78716c;
+  --sikupi-gray-500: #a8a29e;
+  --sikupi-gray-600: #d6d3d1;
+  --sikupi-gray-700: #e7e5e4;
+  --sikupi-gray-800: #f5f5f4;
+  --sikupi-gray-900: #fafaf9;
+
+  /* shadcn/ui dark mode colors (unchanged) */
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -118,5 +281,17 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Sikupi Custom CSS Classes */
+@layer components {
+  .sikupi-nav-link {
+    color: var(--sikupi-gray-700);
+    transition: color 0.2s ease-in-out;
+  }
+
+  .sikupi-nav-link:hover {
+    color: var(--sikupi-primary) !important;
   }
 }

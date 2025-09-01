@@ -1,13 +1,25 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/lib/auth";
+import AuthServerWrapper from "@/components/AuthServerWrapper";
+import { QueryProvider } from "@/lib/query-client";
+import { ToastProvider } from "@/lib/toast-context";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Sikupi - Coffee Grounds Marketplace",
   description: "Marketplace untuk ampas kopi dan produk turunannya di Banda Aceh",
+  icons: {
+    icon: [
+      {
+        url: "/sikupi-logo-seed.png",
+        sizes: "any",
+      },
+    ],
+    apple: "/sikupi-logo-seed.png",
+    shortcut: "/sikupi-logo-seed.png",
+  },
 };
 
 export default function RootLayout({
@@ -18,9 +30,14 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <body className={inter.className}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        {/* Global providers only. Header/Footer applied in (site) route group layout. */}
+        <QueryProvider>
+          <AuthServerWrapper>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </AuthServerWrapper>
+        </QueryProvider>
       </body>
     </html>
   );

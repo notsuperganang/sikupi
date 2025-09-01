@@ -52,18 +52,29 @@ export class DatabaseCartStorage {
         return { success: false, error: 'Product not found or not available' }
       }
 
-      // Check stock availability
-      if ((product as any).stock_qty < quantity) {
+      // Get existing cart item to accumulate quantity instead of overwriting
+      const { data: existingItem } = await (supabaseAdmin as any)
+        .from('cart_items')
+        .select('quantity')
+        .eq('user_id', userId)
+        .eq('product_id', productId)
+        .maybeSingle()
+
+      const currentQty = existingItem?.quantity || 0
+      const newQuantity = currentQty + quantity
+
+      // Check stock availability against the new total quantity
+      if ((product as any).stock_qty < newQuantity) {
         return { success: false, error: `Insufficient stock. Available: ${(product as any).stock_qty} ${(product as any).unit}` }
       }
 
-      // Use upsert to add or update cart item
+      // Upsert with the accumulated quantity
       const { error } = await (supabaseAdmin as any)
         .from('cart_items')
         .upsert({
           user_id: userId,
           product_id: productId,
-          quantity: quantity
+          quantity: newQuantity
         }, {
           onConflict: 'user_id,product_id'
         })

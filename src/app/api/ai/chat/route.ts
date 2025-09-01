@@ -3,7 +3,7 @@ import { createChatCompletion, mockTools } from '@/lib/openai'
 import { ZChatRequest, ZChatResponse, type ChatMessage, type ChatResponse } from '@/lib/schemas/analyzer'
 import OpenAI from 'openai'
 
-const SIKUPIBOT_SYSTEM_PROMPT = `Kamu adalah *SiKupiBot*, asisten untuk marketplace Sikupi yang ramah dan membantu.
+const SIKUPIBOT_SYSTEM_PROMPT = `Kamu adalah *Ampy*, asisten untuk marketplace Sikupi yang ramah dan membantu.
 
 Kepribadian:
 - Ramah, santai, sedikit playful

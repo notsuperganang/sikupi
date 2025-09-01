@@ -30,12 +30,15 @@ Your task:
 
 Important guidelines:
 - Use heuristic visual assessment only - avoid definitive lab claims
-- Keep "why" explanations under 25 words each
+- Keep "why" explanations under 25 words each, in Indonesian language
 - If image quality is poor, note it and adjust confidence scores
-- Base price estimates on Indonesian coffee grounds market (IDR)
+- ALWAYS return a single estimated price between 2,000 and 5,000 IDR depending on the quality. Return ONLY one number in the 'price' field (not min/max range). Use increments of 500 (e.g., 2000, 2500, 3000, 3500, 4000, 4500, 5000).
+- Be optimistic with Sikupi scores - aim for 70-90+ range to encourage sellers
 - Consider regional demand and processing difficulty
-- Red flags should highlight genuine quality concerns
-- Eco scores should reflect realistic environmental impact
+- Red flags should highlight genuine quality concerns, in Indonesian
+- Eco scores should reflect positive environmental impact
+- All UI copy (title, tagline, cta) must be in Indonesian language
+- All explanatory text and feedback must be in Indonesian language
 
 Output ONLY valid JSON that strictly matches the provided schema.`
 
@@ -140,6 +143,8 @@ Metadata:
 - Jenis kopi: ${jenis_kopi}
 - Grind level: ${grind_level}  
 - Condition: ${condition}
+
+IMPORTANT: Return a single price value in the 'price' field (not min/max range). Choose one value between 2000-5000 IDR based on quality assessment.
 
 Provide complete analysis following the JSON schema.`
           },

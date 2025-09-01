@@ -4,6 +4,12 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { createClient } from '@supabase/supabase-js'
 import { headers } from 'next/headers'
 import type { Database } from '@/types/database'
+import { 
+  uploadProductImages, 
+  cleanupFailedUpload, 
+  extractImageFiles, 
+  parseProductFormData 
+} from '@/lib/image-upload'
 
 // Product creation validation schema
 const CreateProductSchema = z.object({
@@ -89,6 +95,78 @@ async function checkAdminPermissions(request: NextRequest): Promise<{ isAdmin: b
   }
 }
 
+export async function GET(request: NextRequest) {
+  try {
+    // Check admin permissions
+    const permissionCheck = await checkAdminPermissions(request)
+    
+    if (!permissionCheck.isAdmin) {
+      return NextResponse.json(
+        { error: permissionCheck.error || 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Get query parameters
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '50')
+    const search = searchParams.get('search')
+    const category = searchParams.get('category')
+    const published = searchParams.get('published')
+
+    // Build query
+    let query = supabaseAdmin
+      .from('products')
+      .select('*', { count: 'exact' })
+
+    // Apply filters
+    if (search) {
+      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
+    }
+    
+    if (category) {
+      query = query.eq('category', category)
+    }
+    
+    if (published !== null && published !== undefined) {
+      query = query.eq('published', published === 'true')
+    }
+
+    // Apply pagination
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+    
+    query = query.range(from, to).order('created_at', { ascending: false })
+
+    const { data: products, error, count } = await query
+
+    if (error) {
+      console.error('Products fetch error:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch products', details: error.message },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: products || [],
+      total: count || 0,
+      page,
+      limit,
+      hasMore: count ? (from + limit) < count : false
+    })
+
+  } catch (error) {
+    console.error('Admin products GET API error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Check admin permissions
@@ -101,9 +179,28 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Parse and validate request body
-    const body = await request.json()
-    const validatedData = CreateProductSchema.parse(body)
+    // Check content type to determine parsing method
+    const contentType = request.headers.get('content-type') || ''
+    let validatedData: any
+    let imageFiles: File[] = []
+    
+    if (contentType.includes('multipart/form-data')) {
+      // Handle FormData with images
+      const formData = await request.formData()
+      
+      // Extract image files
+      imageFiles = extractImageFiles(formData)
+      
+      // Parse product data from FormData
+      const productData = parseProductFormData(formData)
+      
+      // Validate the parsed data
+      validatedData = CreateProductSchema.parse(productData)
+    } else {
+      // Handle JSON (backward compatibility)
+      const body = await request.json()
+      validatedData = CreateProductSchema.parse(body)
+    }
     
     // Generate slug if not provided
     if (!validatedData.slug) {
@@ -140,7 +237,7 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Create the product
+    // Create the product first (without images)
     const { data: newProduct, error: createError } = await (supabaseAdmin as any)
       .from('products')
       .insert(validatedData)
@@ -155,8 +252,57 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Format response - Type assertion for TypeScript
     const productData = newProduct as any
+    let finalImageUrls: string[] = validatedData.image_urls || []
+    
+    // Handle image uploads if files are provided
+    if (imageFiles.length > 0) {
+      try {
+        const { uploadedUrls, errors } = await uploadProductImages(productData.id, imageFiles)
+        
+        if (errors.length > 0) {
+          console.error('Image upload errors:', errors)
+          // If any uploads failed, we still continue but log the errors
+          // You might want to be stricter here depending on requirements
+        }
+        
+        // Add uploaded URLs to existing image URLs
+        finalImageUrls = [...finalImageUrls, ...uploadedUrls]
+        
+        // Update product with image URLs
+        if (uploadedUrls.length > 0) {
+          const { error: updateError } = await (supabaseAdmin as any)
+            .from('products')
+            .update({ image_urls: finalImageUrls })
+            .eq('id', productData.id)
+          
+          if (updateError) {
+            console.error('Failed to update product with image URLs:', updateError)
+            // Clean up uploaded images since product update failed
+            await cleanupFailedUpload(uploadedUrls)
+            return NextResponse.json(
+              { error: 'Failed to update product with uploaded images', details: updateError.message },
+              { status: 500 }
+            )
+          }
+        }
+        
+      } catch (uploadError) {
+        console.error('Image upload exception:', uploadError)
+        // Product was created but image upload failed
+        // You might want to delete the product or return a warning
+        return NextResponse.json(
+          { 
+            error: 'Product created but image upload failed', 
+            details: uploadError instanceof Error ? uploadError.message : 'Unknown upload error',
+            product_id: productData.id
+          },
+          { status: 207 } // 207 Multi-Status - partial success
+        )
+      }
+    }
+    
+    // Format response - Type assertion for TypeScript
     const formattedProduct = {
       id: productData.id,
       kind: productData.kind,
@@ -171,7 +317,7 @@ export async function POST(request: NextRequest) {
       price_idr: productData.price_idr,
       stock_qty: productData.stock_qty,
       unit: productData.unit,
-      image_urls: productData.image_urls || [],
+      image_urls: finalImageUrls,
       published: productData.published,
       created_at: productData.created_at,
       updated_at: productData.updated_at,
