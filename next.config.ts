@@ -73,7 +73,6 @@ const nextConfig: NextConfig = {
   // Production optimizations
   poweredByHeader: false,
   compress: true,
-  swcMinify: true,
 
   // Headers for security and CORS
   async headers() {
