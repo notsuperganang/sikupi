@@ -17,7 +17,7 @@ export default function OrdersPage() {
 
 function OrdersPageSkeleton() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 pt-20 md:pt-24">
       <div className="max-w-6xl mx-auto">
         {/* Header Skeleton */}
         <div className="mb-8">

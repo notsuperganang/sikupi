@@ -29,7 +29,7 @@ export default async function CartPage() {
   }
 
   return (
-    <main className="min-h-screen bg-stone-50">
+    <main className="min-h-screen bg-stone-50 pt-20 md:pt-24">
       {/* Breadcrumbs */}
       <div className="bg-white border-b border-stone-200">
         <div className="container mx-auto px-4 py-3">

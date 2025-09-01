@@ -110,7 +110,7 @@ export default function OrdersPageClient() {
   // Show loading state while checking authentication
   if (authLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 pt-20 md:pt-24">
         <div className="max-w-6xl mx-auto text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto mb-4"></div>
           <p className="text-stone-600">Memuat...</p>
@@ -129,7 +129,7 @@ export default function OrdersPageClient() {
   const summary = ordersData?.summary
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 pt-20 md:pt-24">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">

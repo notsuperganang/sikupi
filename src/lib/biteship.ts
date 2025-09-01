@@ -398,7 +398,7 @@ export class BiteshipService {
       
       // Shipping details
       courier_company: orderData.courierCompany.toLowerCase(),
-      courier_type: orderData.courierType.toLowerCase(),
+      courier_type: this.mapCourierType(orderData.courierCompany, orderData.courierType),
       delivery_type: 'now', // Immediate delivery
       order_note: `Sikupi marketplace order #${orderData.orderId}`,
       
@@ -417,6 +417,41 @@ export class BiteshipService {
   }
 
   /**
+   * Get order details by order ID
+   */
+  async getOrderDetails(orderId: string): Promise<CreateOrderResponse> {
+    const url = `${BITESHIP_BASE_URL}/orders/${orderId}`
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': this.apiKey,
+          'Content-Type': 'application/json'
+        },
+        signal: AbortSignal.timeout(10000) // 10 second timeout
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(`Biteship API Error: ${error.error || response.statusText}`)
+      }
+
+      const data = await response.json()
+      console.log('Biteship order details:', {
+        id: data.id,
+        status: data.status,
+        waybill_id: data.waybill_id
+      })
+      
+      return data
+    } catch (error) {
+      console.error('Biteship getOrderDetails error:', error)
+      throw new Error(`Failed to get order details: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  /**
    * Track a shipment by order ID
    */
   async trackOrder(orderId: string): Promise<TrackingResponse> {
@@ -428,7 +463,8 @@ export class BiteshipService {
         headers: {
           'Authorization': this.apiKey,
           'Content-Type': 'application/json'
-        }
+        },
+        signal: AbortSignal.timeout(10000) // 10 second timeout
       })
 
       if (!response.ok) {
@@ -461,6 +497,42 @@ export class BiteshipService {
     // return signature === expectedSignature
     
     return true // Basic verification for now
+  }
+
+  /**
+   * Map courier service type to Biteship format
+   */
+  mapCourierType(courier: string, serviceType: string): string {
+    const courierLower = courier.toLowerCase()
+    const serviceLower = serviceType.toLowerCase()
+    
+    // JNE service mapping
+    if (courierLower === 'jne') {
+      if (serviceLower.includes('reg') || serviceLower.includes('reguler')) return 'reg'
+      if (serviceLower.includes('oke')) return 'oke'
+      if (serviceLower.includes('yes')) return 'yes'
+    }
+    
+    // J&T service mapping
+    if (courierLower === 'jnt' || courierLower === 'j&t') {
+      if (serviceLower.includes('reg') || serviceLower.includes('reguler')) return 'ez'
+      if (serviceLower.includes('express')) return 'express'
+    }
+    
+    // TIKI service mapping
+    if (courierLower === 'tiki') {
+      if (serviceLower.includes('reg') || serviceLower.includes('reguler')) return 'reg'
+      if (serviceLower.includes('ons') || serviceLower.includes('overnight')) return 'ons'
+    }
+    
+    // POS Indonesia service mapping
+    if (courierLower === 'pos') {
+      if (serviceLower.includes('reg') || serviceLower.includes('reguler')) return 'pos_reguler'
+      if (serviceLower.includes('next')) return 'pos_nextday'
+    }
+    
+    // Default fallback
+    return serviceLower
   }
 
   /**

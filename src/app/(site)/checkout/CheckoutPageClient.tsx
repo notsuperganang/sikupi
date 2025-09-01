@@ -118,7 +118,7 @@ export default function CheckoutPageClient() {
   // Show loading while initializing
   if (!isInitialized || isCartLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 pt-20 md:pt-24">
         <div className="max-w-6xl mx-auto">
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto mb-4"></div>
@@ -134,7 +134,7 @@ export default function CheckoutPageClient() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 pt-20 md:pt-24">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">

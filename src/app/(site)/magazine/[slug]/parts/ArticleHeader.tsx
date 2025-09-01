@@ -59,7 +59,7 @@ export default function ArticleHeader({ post }: ArticleHeaderProps) {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="pt-6 pb-4"
+          className="pt-20 md:pt-24 pb-4"
         >
           <div className="flex items-center gap-2 text-sm text-white/80">
             <Link 

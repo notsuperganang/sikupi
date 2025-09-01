@@ -161,8 +161,6 @@ export default function PaymentResultClient() {
 
   // Get parameters from URL
   const orderId = searchParams?.get('order_id')
-  const transactionStatus = searchParams?.get('transaction_status')
-  const statusCode = searchParams?.get('status_code')
 
   useEffect(() => {
     if (!orderId) {
@@ -509,18 +507,6 @@ export default function PaymentResultClient() {
           </div>
         </div>
 
-        {/* Debug Info (Development Only) */}
-        {process.env.NODE_ENV === 'development' && (
-          <Card className="p-4 mt-6 bg-stone-50">
-            <h4 className="text-xs font-semibold text-stone-700 mb-2">Debug Info (Dev Only)</h4>
-            <pre className="text-xs text-stone-600 overflow-auto">
-              {JSON.stringify({ 
-                urlParams: { orderId, transactionStatus, statusCode },
-                verificationResult: data
-              }, null, 2)}
-            </pre>
-          </Card>
-        )}
       </div>
     </div>
   )

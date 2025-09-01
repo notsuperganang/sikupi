@@ -216,7 +216,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     <CartClient>
       <main className="min-h-screen bg-stone-50">
         {/* Breadcrumbs */}
-        <div className="bg-white border-b border-stone-200">
+        <div className="bg-white border-b border-stone-200 pt-20 md:pt-24">
           <div className="container mx-auto px-4 py-3">
             <nav className="flex items-center space-x-2 text-sm text-stone-600">
               {breadcrumbs.map((crumb, index) => (

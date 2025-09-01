@@ -60,10 +60,9 @@ const Header = () => {
   }
 
   return (
-    <div className="sticky top-0 z-50">
-      <Navbar className="top-0">
-        {/* Desktop Navigation */}
-        <NavBody className="px-4 lg:px-6">
+    <Navbar className="top-0">
+      {/* Desktop Navigation */}
+      <NavBody className="px-4 lg:px-6">
           {/* Logo */}
           <Link href="/" className="relative z-20 flex items-center space-x-2">
             <Image
@@ -269,7 +268,6 @@ const Header = () => {
           </MobileNavMenu>
         </MobileNav>
       </Navbar>
-    </div>
   )
 }
 

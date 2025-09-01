@@ -242,7 +242,7 @@ export default function PaymentPageClient() {
   // Show loading while checking authentication
   if (authLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 pt-20 md:pt-24">
         <div className="max-w-4xl mx-auto text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p className="text-stone-600">Memuat...</p>
@@ -258,7 +258,7 @@ export default function PaymentPageClient() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 pt-20 md:pt-24">
         <div className="max-w-4xl mx-auto text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p className="text-stone-600">Memuat detail pesanan...</p>
@@ -269,7 +269,7 @@ export default function PaymentPageClient() {
 
   if (error || !order) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 pt-20 md:pt-24">
         <div className="max-w-4xl mx-auto">
           <Button variant="ghost" asChild className="mb-6">
             <Link href="/orders">
@@ -298,7 +298,7 @@ export default function PaymentPageClient() {
   const canPay = order.status === 'pending_payment' || order.status === 'new'
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 pt-20 md:pt-24">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6">

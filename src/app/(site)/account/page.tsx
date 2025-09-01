@@ -196,7 +196,7 @@ export default function AccountPage() {
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto px-4 py-8 pt-20 md:pt-24">
           <div className="flex justify-center items-center min-h-[400px]">
             <div className="flex items-center gap-3">
               <Loader2 className="h-6 w-6 animate-spin text-amber-600" />
@@ -211,7 +211,7 @@ export default function AccountPage() {
   if (!user || !profile) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto px-4 py-8 pt-20 md:pt-24">
           <div className="text-center">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Akses Ditolak</h1>
@@ -229,7 +229,7 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-8 pt-20 md:pt-24">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Profil Saya</h1>

@@ -374,7 +374,7 @@ export default function AmpasAnalyzerPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-stone-50 via-amber-50/30 to-yellow-50/40">
       {/* Hero Section */}
-      <section className="relative py-16 md:py-24 overflow-hidden">
+      <section className="relative py-16 md:py-24 pt-20 md:pt-28 overflow-hidden">
         {/* Animated Background Ripple Effect */}
         <div className="absolute inset-0 z-0">
           <BackgroundRippleEffect 

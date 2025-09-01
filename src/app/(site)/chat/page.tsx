@@ -10,6 +10,7 @@ import { PlaceholdersAndVanishInput } from '@/components/ui/placeholders-and-van
 import { BackgroundRippleEffect } from '@/components/ui/background-ripple-effect'
 import { HoverEffect } from '@/components/ui/card-hover-effect'
 import { SparklesText } from '@/components/magicui/sparkles-text'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Coffee, 
   Lightbulb, 
@@ -105,9 +106,110 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isPageLoaded, setIsPageLoaded] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.6,
+        staggerChildren: 0.1,
+        delayChildren: 0.2
+      }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { 
+      opacity: 0, 
+      y: 30,
+      scale: 0.95
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        type: "spring" as const,
+        stiffness: 100,
+        damping: 12,
+        duration: 0.6
+      }
+    }
+  }
+
+  const heroVariants = {
+    hidden: { 
+      opacity: 0, 
+      y: 40,
+      scale: 0.9
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        type: "spring" as const,
+        stiffness: 80,
+        damping: 15,
+        duration: 0.8,
+        delay: 0.3
+      }
+    }
+  }
+
+  const imageVariants = {
+    hidden: { 
+      opacity: 0, 
+      scale: 0.8,
+      rotate: -5
+    },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      rotate: 0,
+      transition: {
+        type: "spring" as const,
+        stiffness: 100,
+        damping: 12,
+        duration: 0.8,
+        delay: 0.5
+      }
+    }
+  }
+
+  const messageVariants = {
+    hidden: { 
+      opacity: 0, 
+      x: -20,
+      scale: 0.95
+    },
+    visible: {
+      opacity: 1,
+      x: 0,
+      scale: 1,
+      transition: {
+        type: "spring" as const,
+        stiffness: 120,
+        damping: 15,
+        duration: 0.5
+      }
+    }
+  }
+
+  // Initialize page load animation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsPageLoaded(true)
+    }, 100)
+    
+    return () => clearTimeout(timer)
+  }, [])
 
   // Placeholder messages for the vanish input
   const placeholders = [
@@ -215,7 +317,12 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white relative overflow-hidden">
+    <motion.div 
+      className="min-h-screen bg-gradient-to-b from-slate-50 to-white relative overflow-hidden"
+      initial="hidden"
+      animate={isPageLoaded ? "visible" : "hidden"}
+      variants={containerVariants}
+    >
       {/* Interactive Ripple Background */}
       <div className="absolute inset-0 z-0">
         <BackgroundRippleEffect
@@ -229,10 +336,19 @@ export default function ChatPage() {
         />
       </div>
       
-      <div className="max-w-4xl mx-auto px-4 py-8 relative z-10">
+      <motion.div 
+        className="max-w-4xl mx-auto px-4 pt-20 md:pt-24 pb-8 relative z-10"
+        variants={itemVariants}
+      >
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="relative inline-block mb-6">
+        <motion.div 
+          className="text-center mb-12"
+          variants={heroVariants}
+        >
+          <motion.div 
+            className="relative inline-block mb-6"
+            variants={imageVariants}
+          >
             <div className="absolute inset-0 bg-gradient-to-r from-amber-200 to-orange-200 rounded-full blur-2xl opacity-30 animate-pulse"></div>
             <Image
               src="/image-asset/ampy.png"
@@ -241,9 +357,12 @@ export default function ChatPage() {
               height={160}
               className="relative rounded-full shadow-lg border-4 border-white"
             />
-          </div>
+          </motion.div>
           
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+          <motion.h1 
+            className="text-4xl md:text-5xl font-bold text-gray-800 mb-4"
+            variants={itemVariants}
+          >
             Hai, saya{" "}
             <SparklesText 
               className="inline-block text-4xl md:text-5xl font-bold"
@@ -253,15 +372,21 @@ export default function ChatPage() {
               Ampy
             </SparklesText>{" "}
             👋
-          </h1>
-          <p className="text-xl text-amber-700 font-medium mb-6">
+          </motion.h1>
+          <motion.p 
+            className="text-xl text-amber-700 font-medium mb-6"
+            variants={itemVariants}
+          >
             Apa yang bisa saya bantu hari ini?
-          </p>
-        </div>
+          </motion.p>
+        </motion.div>
 
         {/* Preset Question Cards - Only show if no conversation yet */}
         {messages.length <= 1 && (
-          <div className="mb-12 relative z-20">
+          <motion.div 
+            className="mb-12 relative z-20"
+            variants={itemVariants}
+          >
             <HoverEffect
               items={presetQuestions.map(preset => ({
                 title: preset.title,
@@ -272,66 +397,104 @@ export default function ChatPage() {
               className="grid grid-cols-1 md:grid-cols-3 gap-4 py-0"
               onItemClick={(item) => handlePresetClick(item.question)}
             />
-          </div>
+          </motion.div>
         )}
 
         {/* Chat Conversation Area */}
-        <div ref={chatContainerRef} className="max-w-3xl mx-auto relative z-20">
+        <motion.div 
+          ref={chatContainerRef} 
+          className="max-w-3xl mx-auto relative z-20"
+          variants={itemVariants}
+        >
           <div className="space-y-6 mb-8">
-            {messages.map((message, index) => (
-              <div
-                key={message.id}
-                className={`flex gap-4 ${
-                  message.role === 'user' ? 'justify-end' : 'justify-start'
-                }`}
-              >
-                {message.role === 'assistant' && (
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-100 to-orange-100 border-2 border-white shadow-sm flex items-center justify-center">
-                      <Image
-                        src="/image-asset/ampy.png"
-                        alt="Ampy"
-                        width={24}
-                        height={24}
-                        className="rounded-full"
-                      />
-                    </div>
-                  </div>
-                )}
-                
-                <div
-                  className={`max-w-[80%] rounded-2xl px-6 py-4 ${
-                    message.role === 'user'
-                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-br-md'
-                      : 'bg-white/80 backdrop-blur-sm text-gray-800 rounded-bl-md border border-gray-200 shadow-sm'
+            <AnimatePresence initial={false}>
+              {messages.map((message, index) => (
+                <motion.div
+                  key={message.id}
+                  className={`flex gap-4 ${
+                    message.role === 'user' ? 'justify-end' : 'justify-start'
                   }`}
+                  variants={messageVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                  layout
                 >
-                  <ChatMessageContent content={message.content} role={message.role} />
-                  <div
-                    className={`text-xs mt-2 ${
-                      message.role === 'user' ? 'text-amber-100' : 'text-gray-500'
+                  {message.role === 'assistant' && (
+                    <motion.div 
+                      className="flex-shrink-0"
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: "spring", stiffness: 150, damping: 12, delay: 0.1 }}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-100 to-orange-100 border-2 border-white shadow-sm flex items-center justify-center">
+                        <Image
+                          src="/image-asset/ampy.png"
+                          alt="Ampy"
+                          width={24}
+                          height={24}
+                          className="rounded-full"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                  
+                  <motion.div
+                    className={`max-w-[80%] rounded-2xl px-6 py-4 ${
+                      message.role === 'user'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-br-md'
+                        : 'bg-white/80 backdrop-blur-sm text-gray-800 rounded-bl-md border border-gray-200 shadow-sm'
                     }`}
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 150, damping: 15, delay: 0.15 }}
                   >
-                    {message.timestamp.toLocaleTimeString('id-ID', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </div>
-                </div>
+                    <ChatMessageContent content={message.content} role={message.role} />
+                    <motion.div
+                      className={`text-xs mt-2 ${
+                        message.role === 'user' ? 'text-amber-100' : 'text-gray-500'
+                      }`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      {message.timestamp.toLocaleTimeString('id-ID', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </motion.div>
+                  </motion.div>
 
-                {message.role === 'user' && (
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-sm">
-                      <User className="w-5 h-5" />
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  {message.role === 'user' && (
+                    <motion.div 
+                      className="flex-shrink-0"
+                      initial={{ scale: 0, rotate: 180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: "spring", stiffness: 150, damping: 12, delay: 0.1 }}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-sm">
+                        <User className="w-5 h-5" />
+                      </div>
+                    </motion.div>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
             
             {isLoading && (
-              <div className="flex gap-4 justify-start">
-                <div className="flex-shrink-0">
+              <motion.div 
+                className="flex gap-4 justify-start"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ type: "spring", stiffness: 150, damping: 15 }}
+              >
+                <motion.div 
+                  className="flex-shrink-0"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 150, damping: 12, delay: 0.1 }}
+                >
                   <div className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-100 to-orange-100 border-2 border-white shadow-sm flex items-center justify-center">
                     <Image
                       src="/image-asset/ampy.png"
@@ -341,35 +504,60 @@ export default function ChatPage() {
                       className="rounded-full"
                     />
                   </div>
-                </div>
-                <div className="bg-white/80 backdrop-blur-sm rounded-2xl rounded-bl-md px-6 py-4 border border-gray-200 shadow-sm">
+                </motion.div>
+                <motion.div 
+                  className="bg-white/80 backdrop-blur-sm rounded-2xl rounded-bl-md px-6 py-4 border border-gray-200 shadow-sm"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 150, damping: 15, delay: 0.15 }}
+                >
                   <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <motion.div 
+                      className="w-2 h-2 bg-gray-400 rounded-full"
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
+                    />
+                    <motion.div 
+                      className="w-2 h-2 bg-gray-400 rounded-full"
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 0.6, repeat: Infinity, delay: 0.1 }}
+                    />
+                    <motion.div 
+                      className="w-2 h-2 bg-gray-400 rounded-full"
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
+                    />
                   </div>
-                </div>
-              </div>
+                </motion.div>
+              </motion.div>
             )}
             
             <div ref={messagesEndRef} />
           </div>
 
           {/* Chat Input Section - Integrated into page */}
-                    {/* Chat Input Section - Clean without box */}
-          <div className="space-y-4">
+          {/* Chat Input Section - Clean without box */}
+          <motion.div 
+            className="space-y-4"
+            variants={itemVariants}
+          >
             <PlaceholdersAndVanishInput
               placeholders={placeholders}
               onChange={(e) => setInputValue(e.target.value)}
               onSubmit={handleSubmit}
             />
             
-            <div className="text-xs text-gray-500 text-center">
+            <motion.div 
+              className="text-xs text-gray-500 text-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8, duration: 0.5 }}
+            >
               Ampy didukung oleh AI. Informasi yang diberikan mungkin tidak selalu akurat.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      </motion.div>
+    </motion.div>
   )
 }

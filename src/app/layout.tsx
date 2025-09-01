@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Sikupi - Coffee Grounds Marketplace",
   description: "Marketplace untuk ampas kopi dan produk turunannya di Banda Aceh",
+  icons: {
+    icon: "/sikupo-vertical-no-bg.png",
+  },
 };
 
 export default function RootLayout({
