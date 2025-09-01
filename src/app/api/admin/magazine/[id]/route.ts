@@ -7,7 +7,7 @@ const MagazinePostUpdateSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200).optional(),
   slug: z.string().regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens').optional(),
   summary: z.string().max(500).optional(),
-  content_md: z.string().min(1, 'Content is required').optional(),
+  content: z.string().optional(), // Accept 'content' and map to 'content_md', make optional
   excerpt: z.string().max(300).optional(),
   meta_description: z.string().max(160).optional(),
   featured_image_url: z.string().url().optional().nullable(),
@@ -158,10 +158,18 @@ export async function PUT(
     const body = await request.json()
     const validatedData = MagazinePostUpdateSchema.parse(body)
 
+    // Additional validation for published articles
+    if (validatedData.published && validatedData.content !== undefined && (!validatedData.content || validatedData.content.trim().length === 0)) {
+      return NextResponse.json(
+        { error: 'Content is required for published articles' },
+        { status: 400 }
+      )
+    }
+
     // Check if post exists
     const { data: existingPost } = await (supabaseAdmin as any)
       .from('magazine_posts')
-      .select('id')
+      .select('id, published')
       .eq('id', validatedParams.id)
       .single()
 
@@ -172,8 +180,32 @@ export async function PUT(
       )
     }
 
+    // If trying to publish, check if content is provided or already exists
+    if (validatedData.published && (!validatedData.content || validatedData.content.trim().length === 0)) {
+      // Check if existing post has content
+      const { data: existingContent } = await (supabaseAdmin as any)
+        .from('magazine_posts')
+        .select('content_md')
+        .eq('id', validatedParams.id)
+        .single()
+      
+      if (!existingContent?.content_md || existingContent.content_md.trim().length === 0) {
+        return NextResponse.json(
+          { error: 'Content is required for published articles' },
+          { status: 400 }
+        )
+      }
+    }
+
     // Prepare update data
     const updateData: any = { ...validatedData }
+    
+    // Map content to content_md if provided
+    if (validatedData.content !== undefined) {
+      updateData.content_md = validatedData.content
+      delete updateData.content
+    }
+    
     if (validatedData.tags) {
       updateData.tags = JSON.stringify(validatedData.tags)
     }

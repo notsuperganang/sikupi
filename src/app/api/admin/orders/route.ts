@@ -21,6 +21,7 @@ async function handleGetAdminOrders(
   adminAuth: AdminAuthResult
 ) {
   try {
+    console.log('Admin orders request - User:', adminAuth.user?.id, 'Profile role:', adminAuth.profile?.role)
     // Parse query parameters
     const { searchParams } = new URL(request.url)
     const queryParams = Object.fromEntries(searchParams.entries())
@@ -86,6 +87,8 @@ async function handleGetAdminOrders(
     
     // Execute query
     const { data: orders, error: ordersError, count } = await query
+    
+    console.log('Admin orders query result:', { orders: orders?.length, error: ordersError, count })
     
     if (ordersError) {
       console.error('Failed to fetch admin orders:', ordersError)

@@ -106,6 +106,86 @@ const DeleteProductParamsSchema = z.object({
   id: z.string().transform(val => parseInt(val)).refine(val => val > 0, 'Product ID must be positive')
 })
 
+// PATCH method for partial updates (like toggle published status)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Check admin permissions
+    const permissionCheck = await checkAdminPermissions(request)
+    
+    if (!permissionCheck.isAdmin) {
+      return NextResponse.json(
+        { error: permissionCheck.error || 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // Validate route parameters
+    const resolvedParams = await params
+    const validatedParams = UpdateProductParamsSchema.parse(resolvedParams)
+    
+    // Check if product exists
+    const { data: existingProduct, error: fetchError } = await supabaseAdmin
+      .from('products')
+      .select('id, published')
+      .eq('id', validatedParams.id)
+      .single()
+    
+    if (fetchError || !existingProduct) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Parse request body for partial update
+    const body = await request.json()
+    const validatedData = UpdateProductSchema.parse(body)
+    
+    // Update the product
+    const { data: updatedProduct, error: updateError } = await (supabaseAdmin as any)
+      .from('products')
+      .update(validatedData)
+      .eq('id', validatedParams.id)
+      .select()
+      .single()
+    
+    if (updateError) {
+      console.error('Product patch error:', updateError)
+      return NextResponse.json(
+        { error: 'Failed to update product', details: updateError.message },
+        { status: 500 }
+      )
+    }
+    
+    return NextResponse.json({
+      success: true,
+      data: updatedProduct,
+      message: 'Product updated successfully'
+    })
+    
+  } catch (error) {
+    console.error('Admin product patch API error:', error)
+    
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid product data', 
+          details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`) 
+        },
+        { status: 400 }
+      )
+    }
+    
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

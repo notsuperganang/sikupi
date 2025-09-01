@@ -67,11 +67,11 @@ export async function middleware(req: NextRequest) {
   } = await supabase.auth.getUser()
   
 
-  // Admin routes protection
-  if (req.nextUrl.pathname.startsWith('/admin')) {
+  // Admin routes protection (except admin login page)
+  if (req.nextUrl.pathname.startsWith('/admin') && req.nextUrl.pathname !== '/admin/login') {
     if (!user) {
-      // Redirect to login if not authenticated
-      return NextResponse.redirect(new URL('/login', req.url))
+      // Redirect to admin login if not authenticated
+      return NextResponse.redirect(new URL('/admin/login', req.url))
     }
 
     // Check if user is admin
@@ -82,9 +82,12 @@ export async function middleware(req: NextRequest) {
       .single()
 
     if (error || !profile || (profile as any)?.role !== 'admin') {
-      // Redirect to home if not admin
-      return NextResponse.redirect(new URL('/', req.url))
+      // Redirect to admin login if not admin (let them try to login)
+      return NextResponse.redirect(new URL('/admin/login', req.url))
     }
+    
+    // User is admin, allow access to admin routes
+    return response
   }
 
   // Protected buyer routes
@@ -101,7 +104,23 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Redirect authenticated users away from auth pages  
+  // Redirect authenticated admin users away from admin login page
+  if (req.nextUrl.pathname === '/admin/login' && user) {
+    // Check if user is admin
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profile && (profile as any)?.role === 'admin') {
+      // Redirect admin users to admin dashboard
+      return NextResponse.redirect(new URL('/admin', req.url))
+    }
+    // If not admin, allow access to admin login page (they'll get an error when they try to login)
+  }
+
+  // Redirect authenticated users away from regular auth pages  
   if ((req.nextUrl.pathname.startsWith('/auth') || req.nextUrl.pathname.startsWith('/login') || req.nextUrl.pathname.startsWith('/register')) && user) {
     // Check if this is coming from OAuth callback - allow a brief window for session establishment
     const fromOAuth = req.nextUrl.searchParams.get('fromOAuth')
@@ -112,17 +131,26 @@ export async function middleware(req: NextRequest) {
       return response
     }
     
+    // Check if user is admin - redirect to admin dashboard
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    
+    const defaultRedirect = profile && (profile as any)?.role === 'admin' ? '/admin' : '/'
+    
     // For OAuth flows, add a small delay to ensure session is fully established
     if (fromOAuth) {
       // If coming from OAuth, ensure cookies are properly set before redirect
       const returnTo = req.nextUrl.searchParams.get('returnTo')
-      const redirectUrl = returnTo && returnTo.startsWith('/') ? returnTo : '/'
+      const redirectUrl = returnTo && returnTo.startsWith('/') ? returnTo : defaultRedirect
       return NextResponse.redirect(new URL(redirectUrl, req.url))
     }
     
     // Check if there's a returnTo parameter to redirect back
     const returnTo = req.nextUrl.searchParams.get('returnTo')
-    const redirectUrl = returnTo && returnTo.startsWith('/') ? returnTo : '/'
+    const redirectUrl = returnTo && returnTo.startsWith('/') ? returnTo : defaultRedirect
     return NextResponse.redirect(new URL(redirectUrl, req.url))
   }
 

@@ -95,6 +95,78 @@ async function checkAdminPermissions(request: NextRequest): Promise<{ isAdmin: b
   }
 }
 
+export async function GET(request: NextRequest) {
+  try {
+    // Check admin permissions
+    const permissionCheck = await checkAdminPermissions(request)
+    
+    if (!permissionCheck.isAdmin) {
+      return NextResponse.json(
+        { error: permissionCheck.error || 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Get query parameters
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '50')
+    const search = searchParams.get('search')
+    const category = searchParams.get('category')
+    const published = searchParams.get('published')
+
+    // Build query
+    let query = supabaseAdmin
+      .from('products')
+      .select('*', { count: 'exact' })
+
+    // Apply filters
+    if (search) {
+      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
+    }
+    
+    if (category) {
+      query = query.eq('category', category)
+    }
+    
+    if (published !== null && published !== undefined) {
+      query = query.eq('published', published === 'true')
+    }
+
+    // Apply pagination
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+    
+    query = query.range(from, to).order('created_at', { ascending: false })
+
+    const { data: products, error, count } = await query
+
+    if (error) {
+      console.error('Products fetch error:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch products', details: error.message },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: products || [],
+      total: count || 0,
+      page,
+      limit,
+      hasMore: count ? (from + limit) < count : false
+    })
+
+  } catch (error) {
+    console.error('Admin products GET API error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Check admin permissions

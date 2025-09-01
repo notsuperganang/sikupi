@@ -18,13 +18,17 @@ const MagazinePostSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   slug: z.string().regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens').optional(),
   summary: z.string().max(500).optional(),
-  content_md: z.string().min(1, 'Content is required'),
+  content: z.string().optional(), // Make content optional - validate separately based on published status
   excerpt: z.string().max(300).optional(),
   meta_description: z.string().max(160).optional(),
-  featured_image_url: z.string().url().optional(),
+  featured_image_url: z.string().url().optional().nullable(),
   gallery_images: z.array(z.string().url()).default([]),
   tags: z.array(z.string().min(1).max(50)).default([]),
-  published: z.boolean().default(false)
+  published: z.boolean().default(false),
+  read_time_minutes: z.number().int().min(0).optional(),
+  // These fields are for compatibility but won't be saved to DB
+  author_name: z.string().optional(),
+  featured: z.boolean().optional()
 })
 
 export async function GET(request: NextRequest) {
@@ -75,8 +79,10 @@ export async function GET(request: NextRequest) {
         title,
         slug,
         summary,
+        content_md,
         excerpt,
         featured_image_url,
+        gallery_images,
         tags,
         published,
         view_count,
@@ -133,18 +139,25 @@ export async function GET(request: NextRequest) {
           const tagsArray = post.tags ? 
             (typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags) : []
           
+          // Parse gallery_images from JSON string to array
+          const galleryImagesArray = post.gallery_images ? 
+            (typeof post.gallery_images === 'string' ? JSON.parse(post.gallery_images) : post.gallery_images) : []
+          
           return {
             id: post.id,
             title: post.title,
             slug: post.slug,
             summary: post.summary,
+            content: post.content_md, // Map content_md to content
             excerpt: post.excerpt,
             featured_image_url: post.featured_image_url,
+            gallery_images: galleryImagesArray,
             tags: tagsArray,
             published: post.published,
             view_count: post.view_count || 0,
             read_time_minutes: post.read_time_minutes || 0,
-            author_name: post.author?.full_name || 'Unknown',
+            author_name: post.author?.full_name || 'Admin',
+            featured: false, // Default featured status
             created_at: post.created_at,
             updated_at: post.updated_at
           }
@@ -224,15 +237,34 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = MagazinePostSchema.parse(body)
 
+    // Additional validation for published articles
+    if (validatedData.published && (!validatedData.content || validatedData.content.trim().length === 0)) {
+      return NextResponse.json(
+        { error: 'Content is required for published articles' },
+        { status: 400 }
+      )
+    }
+
+    // Map frontend fields to database fields
+    const dbData = {
+      title: validatedData.title,
+      slug: validatedData.slug,
+      summary: validatedData.summary,
+      content_md: validatedData.content || '', // Map 'content' to 'content_md', default to empty string
+      excerpt: validatedData.excerpt,
+      meta_description: validatedData.meta_description,
+      featured_image_url: validatedData.featured_image_url,
+      gallery_images: JSON.stringify(validatedData.gallery_images),
+      tags: JSON.stringify(validatedData.tags),
+      published: validatedData.published,
+      read_time_minutes: validatedData.read_time_minutes,
+      author_id: null // Set to null as requested
+    }
+
     // Create the magazine post
     const { data: post, error } = await (supabaseAdmin as any)
       .from('magazine_posts')
-      .insert({
-        ...validatedData,
-        author_id: user.id,
-        tags: JSON.stringify(validatedData.tags),
-        gallery_images: JSON.stringify(validatedData.gallery_images)
-      })
+      .insert(dbData)
       .select(`
         id,
         title,
@@ -274,16 +306,30 @@ export async function POST(request: NextRequest) {
     const galleryImagesArray = (post as any).gallery_images ? 
       (typeof (post as any).gallery_images === 'string' ? JSON.parse((post as any).gallery_images) : (post as any).gallery_images) : []
 
+    // Map database fields back to frontend format
+    const responseData = {
+      id: (post as any).id,
+      title: (post as any).title,
+      slug: (post as any).slug,
+      summary: (post as any).summary,
+      content: (post as any).content_md, // Map 'content_md' back to 'content'
+      excerpt: (post as any).excerpt,
+      meta_description: (post as any).meta_description,
+      featured_image_url: (post as any).featured_image_url,
+      gallery_images: galleryImagesArray,
+      tags: tagsArray,
+      published: (post as any).published,
+      read_time_minutes: (post as any).read_time_minutes,
+      created_at: (post as any).created_at,
+      updated_at: (post as any).updated_at,
+      author_name: 'Admin', // Default author name
+      featured: false // Default featured status
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Magazine post created successfully',
-      data: {
-        post: {
-          ...(post as any),
-          tags: tagsArray,
-          gallery_images: galleryImagesArray
-        }
-      }
+      data: responseData
     })
 
   } catch (error) {
