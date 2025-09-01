@@ -19,6 +19,8 @@ dist
 # Git
 .git
 
+secret
+
 # OS files
 .DS_Store
 Thumbs.db
