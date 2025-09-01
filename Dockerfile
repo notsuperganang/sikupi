@@ -22,15 +22,8 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN if [ -f package-lock.json ]; then npm ci --ignore-scripts; else npm install --ignore-scripts; fi
 
-# Copy source files explicitly
-COPY src ./src
-COPY public ./public
-COPY next.config.ts ./
-COPY tsconfig.json ./
-COPY tailwind.config.ts ./
-COPY postcss.config.mjs ./
-COPY components.json ./ 
-COPY .env* ./
+# Copy everything - prioritize speed over optimization
+COPY . .
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/docs/app/building-your-application/configuring/environment-variables#next_telemetry_disabled

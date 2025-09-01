@@ -1,112 +1,27 @@
-# Dependencies
-node_modules
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Minimal .dockerignore for speed deployment
+# Only exclude absolutely necessary files
 
-# Production build
+# Dependencies (will be installed fresh)
+node_modules
+
+# Build outputs (will be generated)
 .next
 out
 dist
 
-# Environment files
+# Environment files (security)
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env
 
 # Git
 .git
-.gitignore
 
-# IDE files
-.vscode
-.idea
-*.swp
-*.swo
-*~
-
-# OS generated files
+# OS files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
 # Logs
-logs
 *.log
-
-# Runtime data
-pids
-*.pid
-*.seed
-
-# Coverage directory used by tools like istanbul
-coverage
-
-# Dependency directory
-node_modules
-
-# Optional npm cache directory
-.npm
-
-# Optional REPL history
-.node_repl_history
-
-# Documentation
-README.md
-*.md
-
-# Development files
-.storybook
-stories
-
-# Testing
-__tests__
-**/*.test.js
-**/*.test.tsx
-**/*.spec.js
-**/*.spec.tsx
-jest.config.js
-cypress
-.nyc_output
-
-# Linting
-.eslintrc.js
-.eslintrc.json
-.eslintignore
-
-# TypeScript
-tsconfig.json
-*.tsbuildinfo
-
-# Deployment files (except Dockerfile)
-docker-compose.yml
-docker-compose.yaml
-Dockerfile.dev
-
-# Cloud Build
-cloudbuild.yaml
-.gcloudignore
-
-# Temporary files
-temp
-tmp
-*.tmp
-
-# Lock files - INCLUDE package-lock.json for npm ci
-# package-lock.json (commented out - we need this file)
-yarn.lock
-
-# Supabase
-supabase
-
-# Scripts
-scripts
-
-# Public assets are copied separately
-# Remove this line if you need to include public assets
-# public
