@@ -147,37 +147,68 @@ export default function PaymentPageClient() {
     setIsPaymentLoading(true)
 
     try {
-      // For existing orders, use the Midtrans order ID if available
-      if (order.midtrans_order_id && order.status === 'pending_payment') {
-        // Retry payment for existing order
-        await midtransClient.pay(order.midtrans_order_id, {
+      // For pending orders, we need to create a new Snap token since the old one may have expired
+      if (order.status === 'pending_payment' || order.status === 'new') {
+        console.log('🔄 Creating new payment token for order:', order.id)
+        
+        // Get auth token for API request  
+        const supabase = (await import('@/lib/supabase')).supabase
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+
+        if (!token) {
+          toast.error('Authentication error', 'Please refresh and try again')
+          return
+        }
+
+        // Create new payment token for this order
+        const response = await fetch(`/api/orders/${order.id}/retry-payment`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || !result.success) {
+          console.error('Failed to create new payment token:', result)
+          toast.error('Gagal memulai pembayaran', result.error || 'Terjadi kesalahan')
+          return
+        }
+
+        const { snap_token, midtrans_order_id } = result.data
+
+        // Open Midtrans payment with new token
+        await midtransClient.pay(snap_token, {
           onSuccess: (result) => {
-            console.log('Payment successful:', result)
+            console.log('✅ Payment successful:', result)
             toast.success('Pembayaran berhasil!', 'Pesanan Anda sedang diproses')
-            router.push(`/checkout/success?order_id=${order.id}&midtrans_order_id=${order.midtrans_order_id}`)
+            router.push(`/checkout/success?order_id=${order.id}&midtrans_order_id=${midtrans_order_id}`)
           },
           onPending: (result) => {
-            console.log('Payment pending:', result)
+            console.log('⏳ Payment pending:', result)
             toast.info('Pembayaran tertunda', 'Silakan selesaikan pembayaran Anda')
-            router.push(`/checkout/pending?order_id=${order.id}&midtrans_order_id=${order.midtrans_order_id}`)
+            router.push(`/checkout/pending?order_id=${order.id}&midtrans_order_id=${midtrans_order_id}`)
           },
           onError: (result) => {
-            console.error('Payment error:', result)
-            toast.error('Pembayaran gagal', 'Terjadi kesalahan saat memproses pembayaran')
+            console.error('❌ Payment error:', result)
+            toast.error('Pembayaran gagal', result.status_message || 'Terjadi kesalahan saat memproses pembayaran')
           },
           onClose: () => {
-            console.log('Payment popup closed')
+            console.log('🚪 Payment popup closed')
             // Refresh order status when popup is closed
             handleRefreshStatus()
           }
         })
       } else {
-        // New payment - shouldn't happen in normal flow but handle gracefully
-        toast.error('Kesalahan sistem', 'Pesanan tidak dapat diproses. Silakan buat pesanan baru.')
-        router.push('/products')
+        // Order cannot be paid
+        toast.error('Kesalahan sistem', `Pesanan dengan status ${order.status} tidak dapat dibayar`)
+        router.push('/orders')
       }
     } catch (error) {
-      console.error('Payment initiation error:', error)
+      console.error('❌ Payment initiation error:', error)
       toast.error('Gagal memulai pembayaran', error instanceof Error ? error.message : 'Terjadi kesalahan')
     } finally {
       setIsPaymentLoading(false)

@@ -127,7 +127,7 @@ export async function GET(
           updateData.paid_at = new Date().toISOString()
         }
 
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await (supabaseAdmin as any)
           .from('orders')
           .update(updateData)
           .eq('id', orderData.id)
@@ -251,7 +251,7 @@ export async function POST(
         updateData.payment_status = 'cancel'
       }
 
-      const { error: updateError } = await supabaseAdmin
+      const { error: updateError } = await (supabaseAdmin as any)
         .from('orders')
         .update(updateData)
         .eq('id', orderData.id)
@@ -295,7 +295,7 @@ export async function POST(
             updateData.paid_at = new Date().toISOString()
           }
 
-          await supabaseAdmin
+          await (supabaseAdmin as any)
             .from('orders')
             .update(updateData)
             .eq('id', orderData.id)

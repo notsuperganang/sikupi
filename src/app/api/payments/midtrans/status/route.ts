@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Update order in database
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await (supabaseAdmin as any)
           .from('orders')
           .update(updateData)
           .eq('id', orderData.id)

@@ -47,6 +47,8 @@ export function AuthProvider({ children, initialSession }: { children: React.Rea
 
   const fetchProfile = async (userId: string, retryCount = 0) => {
     try {
+      console.log(`🔍 [AUTH_PROVIDER] Fetching profile for user: ${userId} (attempt ${retryCount + 1})`)
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -54,25 +56,49 @@ export function AuthProvider({ children, initialSession }: { children: React.Rea
         .single()
       
       if (error) {
-        // Profile not found - this is okay
+        // Profile not found - this is okay for new users
         if (error.code === 'PGRST116') {
+          console.log(`👤 [AUTH_PROVIDER] Profile not found for user: ${userId} (new user)`)
           return null
         }
         
-        // 406 Not Acceptable or other temporary errors - retry a few times
-        if ((error.message.includes('406') || error.message.includes('Not Acceptable')) && retryCount < 3) {
-          console.log(`Profile fetch retry ${retryCount + 1} for user ${userId}`)
-          await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second
+        // 406 Not Acceptable or other temporary errors - retry with exponential backoff
+        if ((error.message?.includes('406') || error.message?.includes('Not Acceptable')) && retryCount < 3) {
+          const delay = Math.pow(2, retryCount) * 1000 // 1s, 2s, 4s
+          console.warn(`⚠️  [AUTH_PROVIDER] 406 error, retrying in ${delay}ms (attempt ${retryCount + 1}/3):`, {
+            userId,
+            error: error.message,
+            code: error.code
+          })
+          await new Promise(resolve => setTimeout(resolve, delay))
           return fetchProfile(userId, retryCount + 1)
         }
         
-        console.warn('Error fetching profile (non-critical):', error)
+        console.error('🚨 [AUTH_PROVIDER] Profile fetch error (non-critical):', {
+          userId,
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          retryCount
+        })
         return null
       }
       
+      console.log(`✅ [AUTH_PROVIDER] Profile fetched successfully for user: ${userId}`)
       return data
-    } catch (error) {
-      console.warn('Error fetching profile (non-critical):', error)
+    } catch (networkError) {
+      console.error('🌐 [AUTH_PROVIDER] Network error fetching profile:', {
+        userId,
+        error: networkError,
+        retryCount
+      })
+      
+      // Retry network errors once
+      if (retryCount < 1) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        return fetchProfile(userId, retryCount + 1)
+      }
+      
       return null
     }
   }

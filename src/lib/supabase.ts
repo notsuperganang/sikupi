@@ -49,21 +49,56 @@ export const getUser = async () => {
   return user
 }
 
-export const getProfile = async (userId: string): Promise<Profile | null> => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
-  
-  if (error) {
-    if (error.code === 'PGRST116') {
-      // Profile not found, return null instead of throwing
-      return null
+export const getProfile = async (userId: string, retryCount = 0): Promise<Profile | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+    
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // Profile not found, return null instead of throwing
+        return null
+      }
+      
+      // Handle 406 errors with retry logic
+      if ((error.message?.includes('406') || error.message?.includes('Not Acceptable')) && retryCount < 3) {
+        console.log(`🔄 [SUPABASE] Retrying profile fetch for user ${userId} (attempt ${retryCount + 1}/3)`)
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000)) // Exponential backoff
+        return getProfile(userId, retryCount + 1)
+      }
+      
+      console.error('🚨 [SUPABASE] Profile fetch error:', {
+        userId,
+        error: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      })
+      
+      // For production resilience, return null instead of throwing on 406 errors
+      if (error.message?.includes('406') || error.message?.includes('Not Acceptable')) {
+        return null
+      }
+      
+      throw error
     }
-    throw error
+    
+    return data
+  } catch (networkError) {
+    console.error('🌐 [SUPABASE] Network error fetching profile:', networkError)
+    
+    // Retry network errors up to 2 times
+    if (retryCount < 2) {
+      console.log(`🔄 [SUPABASE] Retrying profile fetch after network error (attempt ${retryCount + 1}/2)`)
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000))
+      return getProfile(userId, retryCount + 1)
+    }
+    
+    return null // Return null to prevent app crashes
   }
-  return data
 }
 
 export const requireAuth = async () => {
@@ -81,4 +116,47 @@ export const requireAdmin = async () => {
   }
   
   return { user, profile }
+}
+
+// Utility function to test Supabase connection health
+export const testSupabaseConnection = async (): Promise<{ healthy: boolean; message: string }> => {
+  try {
+    // Try a simple query that should always work
+    const { error } = await supabase
+      .from('profiles')
+      .select('id')
+      .limit(1)
+    
+    if (error) {
+      return {
+        healthy: false,
+        message: `Supabase query error: ${error.message} (Code: ${error.code})`
+      }
+    }
+    
+    return {
+      healthy: true,
+      message: 'Supabase connection is healthy'
+    }
+  } catch (error) {
+    return {
+      healthy: false,
+      message: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+// Enhanced profile fetching with connection diagnostics
+export const getProfileWithDiagnostics = async (userId: string) => {
+  // First test the connection
+  const healthCheck = await testSupabaseConnection()
+  
+  if (!healthCheck.healthy) {
+    console.error('🩺 [SUPABASE] Connection health check failed:', healthCheck.message)
+  } else {
+    console.log('🩺 [SUPABASE] Connection health check passed')
+  }
+  
+  // Then try to get the profile
+  return getProfile(userId)
 }

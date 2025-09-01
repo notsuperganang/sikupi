@@ -218,7 +218,7 @@ export async function POST(
     })
 
     // Calculate total value
-    const totalValue = shippingItems.reduce((sum, item) => sum + item.value, 0)
+    const totalValue = shippingItems.reduce((sum: number, item: any) => sum + item.value, 0)
 
     // Map courier service name to Biteship courier type
     const courierTypeMapping: Record<string, string> = {
@@ -254,7 +254,7 @@ export async function POST(
       })
 
       // Update order with Biteship details
-      const { error: updateError } = await supabaseAdmin
+      const { error: updateError } = await (supabaseAdmin as any)
         .from('orders')
         .update({
           biteship_order_id: biteshipOrder.id,
