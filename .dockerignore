@@ -97,8 +97,8 @@ temp
 tmp
 *.tmp
 
-# Lock files (we copy them separately)
-package-lock.json
+# Lock files - INCLUDE package-lock.json for npm ci
+# package-lock.json (commented out - we need this file)
 yarn.lock
 
 # Supabase
