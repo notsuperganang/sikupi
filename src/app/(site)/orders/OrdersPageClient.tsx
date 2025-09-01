@@ -33,6 +33,8 @@ export default function OrdersPageClient() {
     searchQuery: '',
     sortBy: 'newest'
   })
+  
+  const [isBulkRefreshing, setIsBulkRefreshing] = useState(false)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -107,6 +109,59 @@ export default function OrdersPageClient() {
     }
   }
 
+  const handleBulkStatusRefresh = async () => {
+    setIsBulkRefreshing(true)
+    
+    const ordersToRefresh = orders.filter((order: any) => 
+      ['paid', 'packed', 'shipped'].includes(order.status) && 
+      order.biteship_order_id
+    ).slice(0, 5) // Limit to 5 most recent orders to avoid API rate limits
+
+    if (ordersToRefresh.length === 0) {
+      toast.info('Tidak ada pesanan untuk diperbarui', 'Hanya pesanan dengan pengiriman aktif yang dapat diperbarui')
+      setIsBulkRefreshing(false)
+      return
+    }
+
+    toast.info('Memperbarui status...', `Memeriksa ${ordersToRefresh.length} pesanan`)
+    
+    let updatedCount = 0
+    
+    try {
+      for (const order of ordersToRefresh) {
+        try {
+          // Check tracking status for shipped orders
+          const trackingResponse = await makeAuthenticatedRequest(`/api/orders/${(order as any).id}/tracking`)
+          
+          if (trackingResponse.success && trackingResponse.data.biteship_tracking) {
+            const trackingData = trackingResponse.data.biteship_tracking
+            const hasNewStatus = trackingData.history && trackingData.history.length > 0
+            
+            if (hasNewStatus) {
+              updatedCount++
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to refresh order ${order.id}:`, error)
+        }
+      }
+
+      // Refetch all orders to show updated data
+      refetchOrders()
+      
+      if (updatedCount > 0) {
+        toast.success(
+          'Status diperbarui!', 
+          `${updatedCount} pesanan berhasil diperbarui dengan tracking terbaru`
+        )
+      } else {
+        toast.info('Status terkini', 'Semua status pesanan sudah up-to-date')
+      }
+    } finally {
+      setIsBulkRefreshing(false)
+    }
+  }
+
   // Show loading state while checking authentication
   if (authLoading) {
     return (
@@ -144,15 +199,27 @@ export default function OrdersPageClient() {
               </p>
             </div>
             
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={isOrdersLoading}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${isOrdersLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleRefresh}
+                disabled={isOrdersLoading}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isOrdersLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              
+              <Button
+                variant="default"
+                onClick={handleBulkStatusRefresh}
+                disabled={isOrdersLoading || isBulkRefreshing}
+                className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700"
+              >
+                <RefreshCw className={`h-4 w-4 ${isBulkRefreshing ? 'animate-spin' : ''}`} />
+                {isBulkRefreshing ? 'Updating...' : 'Update Status'}
+              </Button>
+            </div>
           </div>
 
           {/* Summary Stats */}

@@ -170,7 +170,7 @@ export default function OrderDetailClient({ initialOrder }: OrderDetailClientPro
         />
 
         {/* Order Status Steps */}
-        <OrderStatusSteps status={order.status} paidAt={order.paidAt} />
+        <OrderStatusSteps status={order.status} paidAt={order.paidAt} trackingData={trackingData} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column */}

@@ -171,58 +171,96 @@ export default function TrackingTimeline({
                   <div className="space-y-3">
                     <h4 className="text-sm font-medium text-stone-900">Riwayat Pengiriman</h4>
                     <div className="space-y-3">
-                      {trackingData.history.map((event, index) => (
-                        <div key={index} className="relative">
-                          {/* Timeline dot */}
-                          <div className="flex items-start gap-3">
-                            <div className={`
-                              w-3 h-3 rounded-full border-2 mt-1 flex-shrink-0
-                              ${index === 0 
-                                ? 'bg-blue-500 border-blue-500' 
-                                : 'bg-white border-stone-300'
-                              }
-                            `} />
-                            
-                            {/* Event content */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                                <p className="text-sm font-medium text-stone-900">
-                                  {event.status}
-                                </p>
-                                <span className="text-xs text-stone-500">
-                                  {new Date(event.time).toLocaleDateString('id-ID', {
-                                    year: 'numeric',
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
-                                </span>
-                              </div>
-                              
-                              {event.location && (
-                                <div className="flex items-center gap-1 mt-1">
-                                  <MapPin className="h-3 w-3 text-stone-500" />
-                                  <span className="text-xs text-stone-600">
-                                    {event.location}
-                                  </span>
+                      {trackingData.history
+                        .slice()
+                        .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()) // Sort newest first
+                        .map((event, index, sortedArray) => {
+                          // Determine status-based colors
+                          const getStatusColor = (status: string, isActive: boolean) => {
+                            const statusLower = status.toLowerCase()
+                            if (isActive) {
+                              if (statusLower.includes('delivered')) return 'bg-green-500 border-green-500'
+                              if (statusLower.includes('dropping_off') || statusLower.includes('in_transit')) return 'bg-blue-500 border-blue-500'
+                              if (statusLower.includes('picked') || statusLower.includes('picking')) return 'bg-amber-500 border-amber-500'
+                              if (statusLower.includes('allocated') || statusLower.includes('confirmed')) return 'bg-emerald-500 border-emerald-500'
+                              return 'bg-blue-500 border-blue-500'
+                            } else {
+                              if (statusLower.includes('delivered')) return 'bg-green-100 border-green-300'
+                              if (statusLower.includes('dropping_off') || statusLower.includes('in_transit')) return 'bg-blue-100 border-blue-300'
+                              if (statusLower.includes('picked') || statusLower.includes('picking')) return 'bg-amber-100 border-amber-300'
+                              if (statusLower.includes('allocated') || statusLower.includes('confirmed')) return 'bg-emerald-100 border-emerald-300'
+                              return 'bg-stone-100 border-stone-300'
+                            }
+                          }
+
+                          const getLineColor = (status: string) => {
+                            const statusLower = status.toLowerCase()
+                            if (statusLower.includes('delivered')) return 'bg-green-400'
+                            if (statusLower.includes('dropping_off') || statusLower.includes('in_transit')) return 'bg-blue-400'
+                            if (statusLower.includes('picked') || statusLower.includes('picking')) return 'bg-amber-400'
+                            if (statusLower.includes('allocated') || statusLower.includes('confirmed')) return 'bg-emerald-400'
+                            return 'bg-stone-300'
+                          }
+
+                          const isActive = index === 0
+                          const dotColor = getStatusColor(event.status, isActive)
+                          const lineColor = getLineColor(event.status)
+
+                          return (
+                            <div key={`${event.time}-${index}`} className="relative">
+                              {/* Timeline dot */}
+                              <div className="flex items-start gap-4">
+                                <div className="relative flex flex-col items-center">
+                                  <div className={`
+                                    w-4 h-4 rounded-full border-2 mt-1 flex-shrink-0 transition-colors duration-200
+                                    ${dotColor}
+                                  `} />
+                                  
+                                  {/* Connecting line */}
+                                  {index < sortedArray.length - 1 && (
+                                    <div className={`
+                                      w-0.5 h-8 mt-2 transition-colors duration-200
+                                      ${lineColor}
+                                    `} />
+                                  )}
                                 </div>
-                              )}
-                              
-                              {event.note && (
-                                <p className="text-xs text-stone-500 mt-1">
-                                  {event.note}
-                                </p>
-                              )}
+                            
+                                {/* Event content */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                                    <p className="text-sm font-medium text-stone-900">
+                                      {event.status}
+                                    </p>
+                                    <span className="text-xs text-stone-500">
+                                      {new Date(event.time).toLocaleDateString('id-ID', {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </span>
+                                  </div>
+                                  
+                                  {event.location && (
+                                    <div className="flex items-center gap-1 mt-1">
+                                      <MapPin className="h-3 w-3 text-stone-500" />
+                                      <span className="text-xs text-stone-600">
+                                        {event.location}
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  {event.note && (
+                                    <p className="text-xs text-stone-500 mt-1">
+                                      {event.note}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                          
-                          {/* Timeline line */}
-                          {index < trackingData.history.length - 1 && (
-                            <div className="absolute left-1.5 top-4 w-0.5 h-6 bg-stone-200" />
-                          )}
-                        </div>
-                      ))}
+                          )
+                        })}
                     </div>
                   </div>
                 )}
