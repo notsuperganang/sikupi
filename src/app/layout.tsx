@@ -11,7 +11,14 @@ export const metadata: Metadata = {
   title: "Sikupi - Coffee Grounds Marketplace",
   description: "Marketplace untuk ampas kopi dan produk turunannya di Banda Aceh",
   icons: {
-    icon: "/sikupo-vertical-no-bg.png",
+    icon: [
+      {
+        url: "/sikupi-logo-seed.png",
+        sizes: "any",
+      },
+    ],
+    apple: "/sikupi-logo-seed.png",
+    shortcut: "/sikupi-logo-seed.png",
   },
 };
 

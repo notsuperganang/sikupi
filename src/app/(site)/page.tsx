@@ -1,11 +1,18 @@
 import { LandingHero } from "@/components/ui/landing-hero";
-import { EcosystemBeamDemo } from "@/components/landing";
+import { EcosystemBeamDemo, FeaturesSection } from "@/components/landing";
 
 export default function Home() {
   return (
     <div className="min-h-screen">
       <LandingHero />
-      <EcosystemBeamDemo />
+      
+      {/* Smooth Transition */}
+      <div className="relative">
+        <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-transparent to-amber-50/50 z-10"></div>
+        <EcosystemBeamDemo />
+      </div>
+      
+      <FeaturesSection />
     </div>
   );
 }

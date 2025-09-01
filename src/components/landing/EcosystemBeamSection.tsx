@@ -102,7 +102,7 @@ export default function EcosystemBeamSection({
       role="region"
       aria-labelledby="ecosystem-title"
       className={cn(
-        "relative h-screen w-full bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50",
+        "relative min-h-screen w-full bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 pb-20",
         className
       )}
       initial={{ opacity: 0 }}
@@ -159,10 +159,10 @@ export default function EcosystemBeamSection({
       </motion.div>
       
       {/* 2-Column Grid Layout */}
-      <div className="relative h-full grid grid-cols-1 lg:grid-cols-[1fr_2fr]">
+      <div className="relative h-full grid grid-cols-1 lg:grid-cols-[1fr_2fr] overflow-visible">
         {/* Left Column: Enhanced 3D Card */}
         <motion.div 
-          className="flex items-center justify-center p-6 lg:p-12"
+          className="flex items-start justify-center pt-12 pb-16 px-6 lg:pt-16 lg:pb-20 lg:px-12 overflow-visible"
           initial={{ x: -100, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.3 }}
@@ -230,7 +230,7 @@ export default function EcosystemBeamSection({
 
         {/* Right Column: Text and AnimatedBeam Visualization */}
         <motion.div 
-          className="flex flex-col items-center justify-center p-6 space-y-8"
+          className="flex flex-col items-center justify-start pt-12 pb-6 px-6 lg:pt-16 lg:pb-12 space-y-6"
           initial={{ x: 100, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.5 }}
