@@ -5,7 +5,11 @@ import { SparklesText } from '@/components/magicui/sparkles-text';
 import { TypewriterShinyButton } from '@/components/magicui/typewriter-shiny-button';
 import { Highlight } from '@/components/ui/hero-highlight';
 
-export function AmpasHeroSection() {
+interface AmpasHeroSectionProps {
+  disableCTA?: boolean;
+}
+
+export function AmpasHeroSection({ disableCTA = false }: AmpasHeroSectionProps) {
   return (
     <motion.div 
       className="max-w-5xl mx-auto"
@@ -103,16 +107,29 @@ export function AmpasHeroSection() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1.4, duration: 0.6 }}
       >
-        <Link href="/ampas-analyzer/form">
-          <TypewriterShinyButton 
-            texts={[
-              "Mulai Analisis Sekarang",
-              "Analisis Ampas Kopi AI",
-              "Cek Potensi Ekonomis",
-              "Teknologi Canggih"
-            ]}
-          />
-        </Link>
+        {disableCTA ? (
+          <div className="opacity-50 cursor-not-allowed pointer-events-none">
+            <TypewriterShinyButton 
+              texts={[
+                "Mulai Analisis Sekarang",
+                "Analisis Ampas Kopi AI",
+                "Cek Potensi Ekonomis",
+                "Teknologi Canggih"
+              ]}
+            />
+          </div>
+        ) : (
+          <Link href="/ampas-analyzer/form">
+            <TypewriterShinyButton 
+              texts={[
+                "Mulai Analisis Sekarang",
+                "Analisis Ampas Kopi AI",
+                "Cek Potensi Ekonomis",
+                "Teknologi Canggih"
+              ]}
+            />
+          </Link>
+        )}
       </motion.div>
     </motion.div>
   );

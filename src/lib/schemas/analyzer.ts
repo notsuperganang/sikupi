@@ -25,8 +25,7 @@ export const ZAmpasAnalysis = z.object({
   }),
   vision_findings: ZVisionFindings,
   price_estimate_idr: z.object({
-    min: z.number().int().nonnegative(),
-    max: z.number().int().nonnegative(),
+    price: z.number().int().min(2000).max(5000),
     confidence: z.number().min(0).max(1),
     factors: z.array(z.string()).default([])
   }),
@@ -85,12 +84,11 @@ export const AmpasAnalysisSchema = {
       price_estimate_idr: {
         type: "object",
         properties: {
-          min: { type: "integer", minimum: 0 },
-          max: { type: "integer", minimum: 0 },
+          price: { type: "integer", minimum: 2000, maximum: 5000 },
           confidence: { type: "number", minimum: 0, maximum: 1 },
           factors: { type: "array", items: { type: "string" } }
         },
-        required: ["min", "max", "confidence", "factors"],
+        required: ["price", "confidence", "factors"],
         additionalProperties: false
       },
       suitability: {
