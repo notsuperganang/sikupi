@@ -1,0 +1,77 @@
+# Google Cloud Build configuration for Sikupi Next.js deployment
+# Builds Docker image and deploys to Cloud Run in asia-southeast2
+
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/sikupi:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/sikupi:latest'
+      - '.'
+    timeout: '1200s'
+
+  # Push the Docker image to Google Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/sikupi:$COMMIT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/sikupi:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'sikupi'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/sikupi:$COMMIT_SHA'
+      - '--region'
+      - 'asia-southeast2'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
+      - '--memory'
+      - '2Gi'
+      - '--cpu'
+      - '2'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '10'
+      - '--concurrency'
+      - '80'
+      - '--timeout'
+      - '300'
+      - '--set-env-vars'
+      - 'NEXT_PUBLIC_SUPABASE_URL=https://rrygpkdjonyztneuczbe.supabase.co,NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyeWdwa2Rqb255enRuZXVjemJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyMDk5MzUsImV4cCI6MjA3MTc4NTkzNX0.8mo_UpV10xlTT7gLu0rZAIW5OYNlkHvSp5UxcmctiVw,MIDTRANS_CLIENT_KEY=SB-Mid-client-xFWoU9nQ-kYdEcHo,NEXT_PUBLIC_WAREHOUSE_ORIGIN_CITY_ID=IDNP21IDNC20IDND1693IDZ23116,NEXT_PUBLIC_APP_URL=https://sikupi-$PROJECT_ID.a.run.app'
+      - '--set-secrets'
+      - 'SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest,MIDTRANS_SERVER_KEY=MIDTRANS_SERVER_KEY:latest,BITESHIP_API_KEY=BITESHIP_API_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,MIDTRANS_WEBHOOK_SECRET=MIDTRANS_WEBHOOK_SECRET:latest,BITESHIP_WEBHOOK_SECRET=BITESHIP_WEBHOOK_SECRET:latest'
+
+# Build configuration
+options:
+  # Use high CPU machine for faster builds
+  machineType: 'E2_HIGHCPU_8'
+  # Increase disk size for large Node.js builds
+  diskSizeGb: 100
+  # Use newer Cloud Build image
+  substitution_option: 'ALLOW_LOOSE'
+  # Enable logging for debugging
+  logging: 'CLOUD_LOGGING_ONLY'
+
+# Build timeout (20 minutes max)
+timeout: '1200s'
+
+# Images to store in Container Registry
+images:
+  - 'gcr.io/$PROJECT_ID/sikupi:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/sikupi:latest'
