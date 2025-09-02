@@ -1,46 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAdminAuth, adminResponse, adminErrorResponse } from '@/lib/admin-auth'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 
-async function verifyAdminAuth(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return { success: false, error: 'No valid authorization header' }
-  }
-
-  const token = authHeader.split(' ')[1]
-  const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-
-  if (authError || !user) {
-    return { success: false, error: 'Invalid or expired token' }
-  }
-
-  // Check if user is admin
-  const { data: profile } = await (supabaseAdmin as any)
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if ((profile as any)?.role !== 'admin') {
-    return { success: false, error: 'Admin access required' }
-  }
-
-  return { success: true, user }
-}
-
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest, adminAuth: any) {
   try {
-    // Verify admin authentication
-    const authResult = await verifyAdminAuth(request)
-    if (!authResult.success) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.error === 'Admin access required' ? 403 : 401 }
-      )
-    }
 
     // Parse form data
     const formData = await request.formData()
@@ -48,26 +14,31 @@ export async function POST(request: NextRequest) {
     const type = formData.get('type') as string // 'featured' or 'gallery'
 
     if (!file) {
-      return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
-      )
+      return adminErrorResponse('No file provided', 400, {
+        expected: 'File upload in form data',
+        received: 'No file field found'
+      })
     }
 
     // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json(
-        { error: `Invalid file type. Allowed types: ${ALLOWED_TYPES.join(', ')}` },
-        { status: 400 }
-      )
+      return adminErrorResponse('Invalid file type', 400, {
+        file_type: file.type,
+        allowed_types: ALLOWED_TYPES,
+        file_name: file.name,
+        help: 'Please upload a JPEG, PNG, or WebP image'
+      })
     }
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: `File too large. Maximum size: ${MAX_FILE_SIZE / (1024 * 1024)}MB` },
-        { status: 400 }
-      )
+      return adminErrorResponse('File too large', 400, {
+        file_size: file.size,
+        max_size: MAX_FILE_SIZE,
+        file_size_mb: (file.size / (1024 * 1024)).toFixed(2),
+        max_size_mb: MAX_FILE_SIZE / (1024 * 1024),
+        help: `Please reduce file size to under ${MAX_FILE_SIZE / (1024 * 1024)}MB`
+      })
     }
 
     // Generate unique filename
@@ -91,10 +62,12 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Storage upload error:', error)
-      return NextResponse.json(
-        { error: 'Failed to upload image', details: error.message },
-        { status: 500 }
-      )
+      return adminErrorResponse('Failed to upload image', 500, {
+        storage_error: error.message,
+        file_path: filePath,
+        file_name: filename,
+        bucket: 'magazine-images'
+      })
     }
 
     // Get public URL
@@ -103,54 +76,44 @@ export async function POST(request: NextRequest) {
       .getPublicUrl(filePath)
 
     if (!urlData.publicUrl) {
-      return NextResponse.json(
-        { error: 'Failed to get public URL for uploaded image' },
-        { status: 500 }
-      )
+      return adminErrorResponse('Failed to get public URL for uploaded image', 500, {
+        file_path: filePath,
+        storage_response: 'No public URL returned'
+      })
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Image uploaded successfully',
-      data: {
-        filename: filename,
-        path: filePath,
-        url: urlData.publicUrl,
-        type: type || 'image',
-        size: file.size,
-        uploaded_at: new Date().toISOString()
-      }
+    return adminResponse({
+      filename: filename,
+      path: filePath,
+      url: urlData.publicUrl,
+      type: type || 'image',
+      size: file.size,
+      uploaded_at: new Date().toISOString()
     })
 
   } catch (error) {
     console.error('Image upload API error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return adminErrorResponse('Internal server error', 500, {
+      error_type: 'unexpected_upload_error',
+      timestamp: new Date().toISOString()
+    })
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export const POST = requireAdminAuth(handlePOST)
+
+async function handleDELETE(request: NextRequest, adminAuth: any) {
   try {
-    // Verify admin authentication
-    const authResult = await verifyAdminAuth(request)
-    if (!authResult.success) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.error === 'Admin access required' ? 403 : 401 }
-      )
-    }
 
     // Parse request body
     const body = await request.json()
     const { path } = body
 
     if (!path) {
-      return NextResponse.json(
-        { error: 'File path is required' },
-        { status: 400 }
-      )
+      return adminErrorResponse('File path is required', 400, {
+        expected: 'path field in request body',
+        received: 'No path provided'
+      })
     }
 
     // Delete from Supabase Storage
@@ -160,26 +123,25 @@ export async function DELETE(request: NextRequest) {
 
     if (error) {
       console.error('Storage deletion error:', error)
-      return NextResponse.json(
-        { error: 'Failed to delete image', details: error.message },
-        { status: 500 }
-      )
+      return adminErrorResponse('Failed to delete image', 500, {
+        storage_error: error.message,
+        file_path: path,
+        bucket: 'magazine-images'
+      })
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Image deleted successfully',
-      data: {
-        deleted_path: path,
-        deleted_at: new Date().toISOString()
-      }
+    return adminResponse({
+      deleted_path: path,
+      deleted_at: new Date().toISOString()
     })
 
   } catch (error) {
     console.error('Image deletion API error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return adminErrorResponse('Internal server error', 500, {
+      error_type: 'unexpected_deletion_error',
+      timestamp: new Date().toISOString()
+    })
   }
 }
+
+export const DELETE = requireAdminAuth(handleDELETE)

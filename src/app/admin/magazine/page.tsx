@@ -64,7 +64,7 @@ interface MagazineArticle {
 type ViewMode = 'list' | 'new' | 'edit'
 
 export default function MagazinePage() {
-  const { session } = useAuth()
+  const { session, authenticatedFetch } = useAuth()
   const [articles, setArticles] = useState<MagazineArticle[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -111,12 +111,8 @@ export default function MagazinePage() {
 
     try {
       setLoading(true)
-      const headers = {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json'
-      }
       
-      const response = await fetch('/api/admin/magazine', { headers })
+      const response = await authenticatedFetch('/api/admin/magazine')
       
       if (!response.ok) {
         throw new Error(`Failed to fetch: ${response.status}`)
@@ -152,14 +148,8 @@ export default function MagazinePage() {
     if (!session?.access_token) return
 
     try {
-      const headers = {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json'
-      }
-      
-      const response = await fetch(`/api/admin/magazine/${articleId}`, {
+      const response = await authenticatedFetch(`/api/admin/magazine/${articleId}`, {
         method: 'PATCH',
-        headers,
         body: JSON.stringify({
           published: !currentStatus
         })
@@ -188,10 +178,6 @@ export default function MagazinePage() {
 
     try {
       setSaving(true)
-      const headers = {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json'
-      }
 
       const url = articleData.id 
         ? `/api/admin/magazine/${articleData.id}`
@@ -206,7 +192,7 @@ export default function MagazinePage() {
         summary: articleData.summary || '',
         excerpt: articleData.excerpt || '',
         content: articleData.content || '', // Ensure content is always a string
-        meta_description: articleData.excerpt || articleData.summary || '',
+        meta_description: (articleData.excerpt || articleData.summary || '').substring(0, 160), // Truncate to 160 chars
         featured_image_url: articleData.featured_image_url || null,
         gallery_images: Array.isArray(articleData.gallery_images) ? articleData.gallery_images : [],
         tags: Array.isArray(articleData.tags) ? articleData.tags : [],
@@ -216,16 +202,22 @@ export default function MagazinePage() {
       
       console.log('Sending API data:', apiData)
       
-      const response = await fetch(url, {
+      const response = await authenticatedFetch(url, {
         method,
-        headers,
         body: JSON.stringify(apiData)
       })
 
       if (!response.ok) {
         const errorData = await response.json()
         console.error('API Error Response:', errorData)
-        throw new Error(`Failed to save article: ${response.status}`)
+        console.error('Full error details:', JSON.stringify(errorData, null, 2))
+        
+        // Show detailed validation errors
+        if (errorData.error?.validation_errors) {
+          console.error('Validation errors:', errorData.error.validation_errors)
+        }
+        
+        throw new Error(`Failed to save article: ${response.status} - ${errorData.error?.message || 'Unknown error'}`)
       }
 
       const data = await response.json()
@@ -302,14 +294,8 @@ export default function MagazinePage() {
     if (!session?.access_token) return
 
     try {
-      const headers = {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json'
-      }
-      
-      const response = await fetch(`/api/admin/magazine/${articleId}`, {
-        method: 'DELETE',
-        headers
+      const response = await authenticatedFetch(`/api/admin/magazine/${articleId}`, {
+        method: 'DELETE'
       })
 
       if (!response.ok) {

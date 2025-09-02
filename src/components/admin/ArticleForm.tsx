@@ -52,7 +52,7 @@ interface ArticleFormProps {
 }
 
 export function ArticleForm({ article, onSave, onCancel, loading = false }: ArticleFormProps) {
-  const { session } = useAuth()
+  const { session, authenticatedFetch } = useAuth()
   const [formData, setFormData] = useState<ArticleFormData>({
     title: '',
     slug: '',
@@ -120,12 +120,11 @@ export function ArticleForm({ article, onSave, onCancel, loading = false }: Arti
         uploadFormData.append('file', imageFile)
         uploadFormData.append('type', 'featured')
 
-        const response = await fetch('/api/admin/magazine/upload', {
+        // Note: For FormData, we must not set Content-Type - let browser handle it
+        const response = await authenticatedFetch('/api/admin/magazine/upload', {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session?.access_token}`
-          },
-          body: uploadFormData
+          body: uploadFormData,
+          headers: {} // Explicitly empty headers to avoid any Content-Type interference
         })
 
         if (!response.ok) {
@@ -153,12 +152,11 @@ export function ArticleForm({ article, onSave, onCancel, loading = false }: Arti
           uploadFormData.append('file', file)
           uploadFormData.append('type', 'gallery')
 
-          const response = await fetch('/api/admin/magazine/upload', {
+          // Note: For FormData, we must not set Content-Type - let browser handle it
+          const response = await authenticatedFetch('/api/admin/magazine/upload', {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${session?.access_token}`
-            },
-            body: uploadFormData
+            body: uploadFormData,
+            headers: {} // Explicitly empty headers to avoid any Content-Type interference
           })
 
           if (!response.ok) {

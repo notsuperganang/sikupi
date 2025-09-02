@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAdminAuth, adminResponse, adminErrorResponse } from '@/lib/admin-auth'
 
 // Query parameter validation schema
 const MagazineQuerySchema = z.object({
@@ -31,40 +32,8 @@ const MagazinePostSchema = z.object({
   featured: z.boolean().optional()
 })
 
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest, adminAuth: any) {
   try {
-    // Check authentication
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'No valid authorization header' },
-        { status: 401 }
-      )
-    }
-
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 401 }
-      )
-    }
-
-    // Check if user is admin
-    const { data: profile } = await (supabaseAdmin as any)
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if ((profile as any)?.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      )
-    }
 
     // Parse query parameters
     const { searchParams } = new URL(request.url)
@@ -120,10 +89,10 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Magazine posts query error:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch magazine posts', details: error.message },
-        { status: 500 }
-      )
+      return adminErrorResponse('Failed to fetch magazine posts', 500, {
+        database_error: error.message,
+        query_type: 'select_magazine_posts'
+      })
     }
 
     // Calculate pagination metadata
@@ -131,107 +100,68 @@ export async function GET(request: NextRequest) {
     const hasNextPage = validatedQuery.page < totalPages
     const hasPrevPage = validatedQuery.page > 1
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        posts: (posts as any[] || []).map((post: any) => {
-          // Parse tags from JSON string to array
-          const tagsArray = post.tags ? 
-            (typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags) : []
-          
-          // Parse gallery_images from JSON string to array
-          const galleryImagesArray = post.gallery_images ? 
-            (typeof post.gallery_images === 'string' ? JSON.parse(post.gallery_images) : post.gallery_images) : []
-          
-          return {
-            id: post.id,
-            title: post.title,
-            slug: post.slug,
-            summary: post.summary,
-            content: post.content_md, // Map content_md to content
-            excerpt: post.excerpt,
-            featured_image_url: post.featured_image_url,
-            gallery_images: galleryImagesArray,
-            tags: tagsArray,
-            published: post.published,
-            view_count: post.view_count || 0,
-            read_time_minutes: post.read_time_minutes || 0,
-            author_name: post.author?.full_name || 'Admin',
-            featured: false, // Default featured status
-            created_at: post.created_at,
-            updated_at: post.updated_at
-          }
-        }),
-        pagination: {
-          current_page: validatedQuery.page,
-          per_page: validatedQuery.limit,
-          total_items: count || 0,
-          total_pages: totalPages,
-          has_next_page: hasNextPage,
-          has_prev_page: hasPrevPage,
-        },
-        filters_applied: {
-          search: validatedQuery.search,
-          status: validatedQuery.status,
-          tag: validatedQuery.tag,
-          sort: {
-            by: validatedQuery.sort_by,
-            order: validatedQuery.sort_order
-          }
+    return adminResponse({
+      posts: (posts as any[] || []).map((post: any) => {
+        // Parse tags from JSON string to array
+        const tagsArray = post.tags ? 
+          (typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags) : []
+        
+        // Parse gallery_images from JSON string to array
+        const galleryImagesArray = post.gallery_images ? 
+          (typeof post.gallery_images === 'string' ? JSON.parse(post.gallery_images) : post.gallery_images) : []
+        
+        return {
+          id: post.id,
+          title: post.title,
+          slug: post.slug,
+          summary: post.summary,
+          content: post.content_md, // Map content_md to content
+          excerpt: post.excerpt,
+          featured_image_url: post.featured_image_url,
+          gallery_images: galleryImagesArray,
+          tags: tagsArray,
+          published: post.published,
+          view_count: post.view_count || 0,
+          read_time_minutes: post.read_time_minutes || 0,
+          author_name: post.author?.full_name || 'Admin',
+          featured: false, // Default featured status
+          created_at: post.created_at,
+          updated_at: post.updated_at
+        }
+      }),
+      pagination: {
+        current_page: validatedQuery.page,
+        per_page: validatedQuery.limit,
+        total_items: count || 0,
+        total_pages: totalPages,
+        has_next_page: hasNextPage,
+        has_prev_page: hasPrevPage,
+      },
+      filters_applied: {
+        search: validatedQuery.search,
+        status: validatedQuery.status,
+        tag: validatedQuery.tag,
+        sort: {
+          by: validatedQuery.sort_by,
+          order: validatedQuery.sort_order
         }
       }
     })
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid request parameters', details: error.errors },
-        { status: 400 }
-      )
+      return adminErrorResponse('Invalid request parameters', 400, error.errors)
     }
 
     console.error('Magazine posts API error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return adminErrorResponse('Internal server error', 500)
   }
 }
 
-export async function POST(request: NextRequest) {
+export const GET = requireAdminAuth(handleGET)
+
+async function handlePOST(request: NextRequest, adminAuth: any) {
   try {
-    // Check authentication
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'No valid authorization header' },
-        { status: 401 }
-      )
-    }
-
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 401 }
-      )
-    }
-
-    // Check if user is admin
-    const { data: profile } = await (supabaseAdmin as any)
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if ((profile as any)?.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      )
-    }
 
     // Parse and validate request body
     const body = await request.json()
@@ -239,10 +169,12 @@ export async function POST(request: NextRequest) {
 
     // Additional validation for published articles
     if (validatedData.published && (!validatedData.content || validatedData.content.trim().length === 0)) {
-      return NextResponse.json(
-        { error: 'Content is required for published articles' },
-        { status: 400 }
-      )
+      return adminErrorResponse('Content is required for published articles', 400, {
+        field: 'content',
+        message: 'Published articles must have content',
+        published: validatedData.published,
+        content_length: validatedData.content?.length || 0
+      })
     }
 
     // Map frontend fields to database fields
@@ -288,16 +220,18 @@ export async function POST(request: NextRequest) {
       
       // Handle unique constraint violations
       if (error.code === '23505' && error.message.includes('slug')) {
-        return NextResponse.json(
-          { error: 'A post with this slug already exists' },
-          { status: 409 }
-        )
+        return adminErrorResponse('A post with this slug already exists', 409, {
+          field: 'slug',
+          value: dbData.slug,
+          suggestion: 'Please choose a different slug or modify the title'
+        })
       }
       
-      return NextResponse.json(
-        { error: 'Failed to create magazine post', details: error.message },
-        { status: 500 }
-      )
+      return adminErrorResponse('Failed to create magazine post', 500, {
+        database_error: error.message,
+        error_code: error.code,
+        submitted_data: Object.keys(dbData)
+      })
     }
 
     // Parse tags and gallery_images for response
@@ -326,24 +260,23 @@ export async function POST(request: NextRequest) {
       featured: false // Default featured status
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Magazine post created successfully',
-      data: responseData
-    })
+    return adminResponse(responseData)
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
-        { status: 400 }
-      )
+      return adminErrorResponse('Invalid request data', 400, {
+        validation_errors: error.errors,
+        failed_fields: error.errors.map(err => err.path.join('.')),
+        help: 'Please check the required fields and their formats'
+      })
     }
 
     console.error('Magazine post creation API error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return adminErrorResponse('Internal server error', 500, {
+      error_type: 'unexpected_error',
+      timestamp: new Date().toISOString()
+    })
   }
 }
+
+export const POST = requireAdminAuth(handlePOST)

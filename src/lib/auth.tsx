@@ -15,6 +15,8 @@ interface AuthContextType {
   signInWithGoogle: (returnTo?: string) => Promise<void>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
+  authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>
+  refreshToken: () => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -359,6 +361,108 @@ export function AuthProvider({ children, initialSession }: { children: React.Rea
     if (error) throw error
   }
 
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      console.log('🔄 [AUTH_PROVIDER] Attempting to refresh token')
+      const { data: { session: newSession }, error } = await supabase.auth.refreshSession()
+      
+      if (error || !newSession) {
+        console.error('❌ [AUTH_PROVIDER] Token refresh failed:', error)
+        return false
+      }
+      
+      console.log('✅ [AUTH_PROVIDER] Token refreshed successfully')
+      setSession(newSession)
+      return true
+    } catch (error) {
+      console.error('❌ [AUTH_PROVIDER] Token refresh error:', error)
+      return false
+    }
+  }
+
+  const authenticatedFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+    // First attempt with current token
+    let currentSession = session
+    if (!currentSession?.access_token) {
+      throw new Error('No active session')
+    }
+
+    // Build headers object, avoiding Content-Type for FormData
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${currentSession.access_token}`,
+    }
+
+    // Only add user headers and Content-Type for non-FormData requests
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json'
+      // Spread user headers for JSON requests
+      Object.assign(headers, options.headers || {})
+    } else {
+      // For FormData, only add non-Content-Type headers
+      const userHeaders = options.headers || {}
+      Object.keys(userHeaders).forEach(key => {
+        if (key.toLowerCase() !== 'content-type') {
+          headers[key] = (userHeaders as any)[key]
+        }
+      })
+    }
+
+    try {
+      console.log('🌐 [AUTH_PROVIDER] Making authenticated request to:', url)
+      const response = await fetch(url, {
+        ...options,
+        headers
+      })
+
+      // If we get 401 Unauthorized, try to refresh the token and retry
+      if (response.status === 401) {
+        console.warn('🔄 [AUTH_PROVIDER] Got 401, attempting token refresh')
+        const refreshed = await refreshToken()
+        
+        if (!refreshed) {
+          throw new Error('Token refresh failed')
+        }
+
+        // Get the new session and retry the request
+        const { data: { session: newSession } } = await supabase.auth.getSession()
+        if (!newSession?.access_token) {
+          throw new Error('No session after refresh')
+        }
+
+        console.log('🔄 [AUTH_PROVIDER] Retrying request with new token')
+        // Build retry headers object, avoiding Content-Type for FormData
+        const retryHeaders: Record<string, string> = {
+          'Authorization': `Bearer ${newSession.access_token}`,
+        }
+
+        // Only add user headers and Content-Type for non-FormData requests
+        if (!(options.body instanceof FormData)) {
+          retryHeaders['Content-Type'] = 'application/json'
+          // Spread user headers for JSON requests
+          Object.assign(retryHeaders, options.headers || {})
+        } else {
+          // For FormData, only add non-Content-Type headers
+          const userHeaders = options.headers || {}
+          Object.keys(userHeaders).forEach(key => {
+            if (key.toLowerCase() !== 'content-type') {
+              retryHeaders[key] = (userHeaders as any)[key]
+            }
+          })
+        }
+
+        return fetch(url, {
+          ...options,
+          headers: retryHeaders
+        })
+      }
+
+      return response
+    } catch (error) {
+      console.error('❌ [AUTH_PROVIDER] Authenticated fetch error:', error)
+      throw error
+    }
+  }
+
   const value = {
     user,
     profile,
@@ -369,6 +473,8 @@ export function AuthProvider({ children, initialSession }: { children: React.Rea
     signInWithGoogle,
     signOut,
     refreshProfile,
+    refreshToken,
+    authenticatedFetch,
   }
 
   return (
