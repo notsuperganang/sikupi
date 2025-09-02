@@ -772,10 +772,14 @@ export function AnalysisResults({ analysis, onAnalyzeAnother }: AnalysisResultsP
         <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
           <Button
             variant="outline"
-            className="w-full border-2 border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400 px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 font-semibold text-lg bg-white/80 backdrop-blur-sm"
+            onClick={() => {
+              const message = encodeURIComponent("Halo admin, saya ingin menjual ampas kopi saya. Berikut hasil analisis dari Sikupi Ampas Analyzer.");
+              window.open(`https://wa.me/6285338573726?text=${message}`, '_blank');
+            }}
+            className="w-full border-2 border-green-300 text-green-700 hover:bg-green-50 hover:border-green-400 px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 font-semibold text-lg bg-white/80 backdrop-blur-sm"
           >
             <CheckCircle className="h-5 w-5 mr-3" />
-            Screenshot & Kirim
+            Hubungi Admin Sekarang
           </Button>
         </motion.div>
       </motion.div>

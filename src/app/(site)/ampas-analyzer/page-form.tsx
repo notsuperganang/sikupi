@@ -267,7 +267,7 @@ export default function AmpasAnalyzerPage() {
 
     return (
       <motion.div 
-        className="flex justify-between items-center pt-12 px-4"
+        className="flex flex-col lg:flex-row justify-between items-center gap-4 lg:gap-0 pt-8 md:pt-12 px-2 md:px-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.3 }}
@@ -275,20 +275,21 @@ export default function AmpasAnalyzerPage() {
         <motion.div
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
+          className="lg:flex-shrink-0"
         >
           <Button
             variant="outline"
             onClick={handlePrevStep}
             disabled={currentStep === 'attributes'}
-            className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400 transition-all duration-200 px-6 py-3 rounded-xl shadow-sm disabled:opacity-50 hover:shadow-md"
+            className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400 transition-all duration-200 px-4 md:px-6 py-2 md:py-3 rounded-xl shadow-sm disabled:opacity-50 hover:shadow-md text-sm md:text-base"
           >
-            <ArrowLeft className="h-5 w-5 mr-2" />
+            <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 mr-1 md:mr-2" />
             Kembali
           </Button>
         </motion.div>
 
         <motion.div 
-          className="flex items-center space-x-4 bg-white/80 backdrop-blur-sm rounded-2xl px-6 py-3 border border-stone-200/50 shadow-sm"
+          className="flex items-center space-x-2 md:space-x-4 bg-white/80 backdrop-blur-sm rounded-2xl px-3 md:px-6 py-2 md:py-3 border border-stone-200/50 shadow-sm order-first lg:order-none"
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
@@ -329,13 +330,13 @@ export default function AmpasAnalyzerPage() {
                     />
                   )}
                 </motion.div>
-                <span className={`ml-2 text-sm font-medium transition-colors duration-200 ${
+                <span className={`ml-1 md:ml-2 text-xs md:text-sm font-medium transition-colors duration-200 ${
                   isActive ? 'text-amber-800' : isCompleted ? 'text-green-800' : 'text-stone-500'
                 }`}>
                   {step === 'attributes' ? 'Karakteristik' : 'Upload Gambar'}
                 </span>
                 {index < ['attributes', 'images'].length - 1 && (
-                  <div className="w-8 h-px bg-stone-300 mx-3" />
+                  <div className="w-4 md:w-8 h-px bg-stone-300 mx-1 md:mx-3" />
                 )}
               </div>
             );
@@ -345,6 +346,7 @@ export default function AmpasAnalyzerPage() {
         <motion.div
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
+          className="lg:flex-shrink-0"
         >
           <Button
             onClick={handleNextStep}
@@ -352,17 +354,19 @@ export default function AmpasAnalyzerPage() {
               (currentStep === 'attributes' && !attributesComplete) ||
               (currentStep === 'images' && !imagesComplete)
             }
-            className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+            className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-4 md:px-8 py-2 md:py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm md:text-base"
           >
             {currentStep === 'images' ? (
               <>
-                <Zap className="h-5 w-5 mr-2" />
-                Analisis Sekarang
+                <Zap className="h-4 w-4 md:h-5 md:w-5 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">Analisis Sekarang</span>
+                <span className="sm:hidden">Analisis</span>
               </>
             ) : (
               <>
-                Lanjut ke Upload
-                <ArrowRight className="h-5 w-5 ml-2" />
+                <span className="hidden sm:inline">Lanjut ke Upload</span>
+                <span className="sm:hidden">Lanjut</span>
+                <ArrowRight className="h-4 w-4 md:h-5 md:w-5 ml-1 md:ml-2" />
               </>
             )}
           </Button>
@@ -372,7 +376,7 @@ export default function AmpasAnalyzerPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-stone-50 via-amber-50/30 to-yellow-50/40">
+    <main className="min-h-screen bg-gradient-to-br from-stone-50 via-amber-50/30 to-yellow-50/40 pb-24 md:pb-6">
       {/* Hero Section */}
       <section className="relative py-16 md:py-24 pt-20 md:pt-28 overflow-hidden">
         {/* Animated Background Ripple Effect */}
@@ -399,7 +403,7 @@ export default function AmpasAnalyzerPage() {
       </section>
 
       {/* Main Content */}
-      <section className="relative py-8 md:py-16">
+      <section className="relative py-4 md:py-8 pb-8 md:pb-16">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             {/* Enhanced card with decorative elements */}
@@ -424,7 +428,7 @@ export default function AmpasAnalyzerPage() {
                     }} />
                   </div>
                   
-                  <div className="relative p-8 md:p-12">
+                  <div className="relative p-4 md:p-8 lg:p-12">
                     <AnimatePresence mode="wait">
                       <motion.div
                         key={currentStep}

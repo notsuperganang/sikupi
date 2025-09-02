@@ -162,36 +162,6 @@ export default function LoginPage() {
                 </p>
               </motion.div>
 
-              {/* Google Sign In Button */}
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.65, duration: 0.5 }}
-              >
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <button
-                    onClick={handleGoogleLogin}
-                    disabled={isGoogleLoading}
-                    className="w-full mb-6 bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2 group rounded-lg h-12 font-medium disabled:opacity-50"
-                  >
-                    <IconBrandGoogle className="w-5 h-5 transition-transform group-hover:scale-110 duration-300" />
-                    <span>{isGoogleLoading ? 'Memproses...' : 'Masuk dengan Google'}</span>
-                  </button>
-                </motion.div>
-              </motion.div>
-
-              {/* Divider */}
-              <motion.div 
-                className="flex items-center gap-4 mb-6"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.7, duration: 0.5 }}
-              >
-                <div className="flex-grow h-px bg-neutral-300 dark:bg-neutral-700"></div>
-                <span className="text-sm text-neutral-500 dark:text-neutral-400 whitespace-nowrap">Atau masuk dengan</span>
-                <div className="flex-grow h-px bg-neutral-300 dark:bg-neutral-700"></div>
-              </motion.div>
-
               {/* Form */}
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <motion.div 
