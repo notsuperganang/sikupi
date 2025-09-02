@@ -3,8 +3,10 @@
 import React, { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { SparklesText } from "@/components/magicui/sparkles-text";
+import { useIsMobile } from "@/lib/mobile-utils";
 
 export function CoffeeShopCTASection() {
+  const isMobile = useIsMobile();
   const sectionRef = useRef<HTMLElement>(null);
   const isInView = useInView(sectionRef, { once: true });
 
@@ -78,38 +80,46 @@ export function CoffeeShopCTASection() {
           className="space-y-8"
         >
           {/* Title */}
-          <div className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold font-serif leading-tight text-amber-800">
-            <SparklesText
-              colors={{
-                first: "#8B4513", // Coffee brown
-                second: "#A0522D"  // Sienna brown
-              }}
-              sparklesCount={6}
-              className="block"
-            >
-              Punya Warung Kopi?
-            </SparklesText>
-            <SparklesText
-              colors={{
-                first: "#8B4513", // Coffee brown
-                second: "#A0522D"  // Sienna brown
-              }}
-              sparklesCount={6}
-              className="block"
-            >
-              Jual Ampas Kopi Anda
-            </SparklesText>
-            <SparklesText
-              colors={{
-                first: "#8B4513", // Coffee brown
-                second: "#A0522D"  // Sienna brown
-              }}
-              sparklesCount={6}
-              className="block"
-            >
-              ke Sikupi!
-            </SparklesText>
-          </div>
+{isMobile ? (
+            <div className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold font-serif leading-tight text-amber-800">
+              <div className="block">Punya Warung Kopi?</div>
+              <div className="block">Jual Ampas Kopi Anda</div>
+              <div className="block">ke Sikupi!</div>
+            </div>
+          ) : (
+            <div className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold font-serif leading-tight text-amber-800">
+              <SparklesText
+                colors={{
+                  first: "#8B4513", // Coffee brown
+                  second: "#A0522D"  // Sienna brown
+                }}
+                sparklesCount={6}
+                className="block"
+              >
+                Punya Warung Kopi?
+              </SparklesText>
+              <SparklesText
+                colors={{
+                  first: "#8B4513", // Coffee brown
+                  second: "#A0522D"  // Sienna brown
+                }}
+                sparklesCount={6}
+                className="block"
+              >
+                Jual Ampas Kopi Anda
+              </SparklesText>
+              <SparklesText
+                colors={{
+                  first: "#8B4513", // Coffee brown
+                  second: "#A0522D"  // Sienna brown
+                }}
+                sparklesCount={6}
+                className="block"
+              >
+                ke Sikupi!
+              </SparklesText>
+            </div>
+          )}
           
           {/* Subtitle */}
           <p className="text-lg md:text-xl text-neutral-600 leading-relaxed max-w-3xl mx-auto">

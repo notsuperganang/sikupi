@@ -8,6 +8,7 @@ import { AnimatedBeam } from "@/components/magicui/animated-beam";
 import { CardBody, CardContainer, CardItem } from "@/components/ui/3d-card";
 import { SparklesText } from "@/components/magicui/sparkles-text";
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
+import { useIsMobile } from "@/lib/mobile-utils";
 
 type NodeIcon =
   | { type: "img"; src: string; alt?: string }
@@ -87,6 +88,7 @@ export default function EcosystemBeamSection({
   beamDurationSec = 3,
 }: EcosystemBeamSectionProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
   const supplierRef = useRef<HTMLDivElement>(null);
   const centerRef = useRef<HTMLDivElement>(null);
   const market1Ref = useRef<HTMLDivElement>(null);
@@ -168,23 +170,34 @@ export default function EcosystemBeamSection({
           transition={{ duration: 0.8, delay: 0.3 }}
         >
           <CardContainer className="inter-var">
-            <CardBody className="bg-white/20 backdrop-blur-lg backdrop-saturate-150 relative group/card border-10 border-amber-900/60 w-auto sm:w-[35rem] h-auto rounded-[2rem] p-8 shadow-2xl before:absolute before:inset-0 before:rounded-[2rem] before:bg-gradient-to-br before:from-white/10 before:to-transparent before:backdrop-blur-sm">
+            <CardBody className={cn(
+              "relative group/card border-10 border-amber-900/60 w-auto sm:w-[35rem] h-auto rounded-[2rem] p-8 shadow-2xl",
+              isMobile 
+                ? "bg-white/90 before:absolute before:inset-0 before:rounded-[2rem] before:bg-gradient-to-br before:from-white/20 before:to-transparent"
+                : "bg-white/20 backdrop-blur-lg backdrop-saturate-150 before:absolute before:inset-0 before:rounded-[2rem] before:bg-gradient-to-br before:from-white/10 before:to-transparent before:backdrop-blur-sm"
+            )}>
               <CardItem
                 translateZ="60"
                 as="h2"
                 id="ecosystem-title"
                 className="mb-6"
               >
-                <SparklesText
-                  colors={{
-                    first: "#8B4513", // Coffee brown
-                    second: "#A0522D"  // Sienna brown
-                  }}
-                  sparklesCount={8}
-                  className="text-2xl md:text-3xl lg:text-4xl font-bold font-serif leading-tight text-amber-800"
-                >
-                  {title}
-                </SparklesText>
+{isMobile ? (
+                  <div className="text-2xl md:text-3xl lg:text-4xl font-bold font-serif leading-tight text-amber-800">
+                    {title}
+                  </div>
+                ) : (
+                  <SparklesText
+                    colors={{
+                      first: "#8B4513", // Coffee brown
+                      second: "#A0522D"  // Sienna brown
+                    }}
+                    sparklesCount={8}
+                    className="text-2xl md:text-3xl lg:text-4xl font-bold font-serif leading-tight text-amber-800"
+                  >
+                    {title}
+                  </SparklesText>
+                )}
               </CardItem>
               <CardItem
                 as="p"

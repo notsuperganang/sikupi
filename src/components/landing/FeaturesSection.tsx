@@ -4,8 +4,10 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { SparklesText } from "@/components/magicui/sparkles-text";
+import { useIsMobile } from "@/lib/mobile-utils";
 
 export function FeaturesSection() {
+  const isMobile = useIsMobile();
   const features = [
     {
       title: "Marketplace Ampas Kopi",
@@ -99,16 +101,22 @@ export function FeaturesSection() {
         {/* Title with Glassmorphism - Same style as landing-hero */}
         <div className="mb-6 flex justify-center">
           <div className="inline-block bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/30">
-            <SparklesText
-              colors={{
-                first: "#8B4513", // Coffee brown
-                second: "#A0522D"  // Sienna brown
-              }}
-              sparklesCount={12}
-              className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold font-serif leading-tight text-amber-800 text-center"
-            >
-              Fitur Lengkap untuk Ekonomi Sirkular
-            </SparklesText>
+{isMobile ? (
+              <div className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold font-serif leading-tight text-amber-800 text-center">
+                Fitur Lengkap untuk Ekonomi Sirkular
+              </div>
+            ) : (
+              <SparklesText
+                colors={{
+                  first: "#8B4513", // Coffee brown
+                  second: "#A0522D"  // Sienna brown
+                }}
+                sparklesCount={12}
+                className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold font-serif leading-tight text-amber-800 text-center"
+              >
+                Fitur Lengkap untuk Ekonomi Sirkular
+              </SparklesText>
+            )}
           </div>
         </div>
 
