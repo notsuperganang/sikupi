@@ -235,7 +235,7 @@ export function SikupiTracker() {
   return (
     <motion.section
       ref={sectionRef}
-      className="relative w-full min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50"
+      className="relative w-full bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 py-8"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.8 }}
@@ -289,7 +289,7 @@ export function SikupiTracker() {
         ></motion.div>
       </motion.div>
 
-      <div className="relative z-10 py-6 lg:py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 py-4 lg:py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Main Content Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-16">
           {/* Left: Copy Block */}

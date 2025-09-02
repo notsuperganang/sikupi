@@ -211,7 +211,7 @@ export default function EcosystemBeamSection({
                   translateZ={30}
                   as="a"
                   href="/magazine"
-                  className="px-6 py-3 rounded-xl text-sm font-medium text-amber-700 hover:text-amber-800 transition-colors bg-white/20 backdrop-blur-sm border border-white/30 hover:bg-white/30"
+                  className="px-6 py-3 rounded-xl text-sm font-medium text-amber-700 hover:text-amber-800 transition-colors bg-white/40 md:bg-white/20 md:backdrop-blur-sm border border-white/30 hover:bg-white/50 md:hover:bg-white/30 shadow-sm"
                 >
                   Pelajari Lebih →
                 </CardItem>

@@ -1,6 +1,7 @@
 "use client";
 import React, { useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/lib/mobile-utils";
 
 export const BackgroundRippleEffect = ({
   rows = 8,
@@ -25,6 +26,12 @@ export const BackgroundRippleEffect = ({
   } | null>(null);
   const [rippleKey, setRippleKey] = useState(0);
   const ref = useRef<any>(null);
+  const isMobile = useIsMobile();
+
+  // Return invisible placeholder on mobile to maintain layout but disable heavy animations
+  if (isMobile) {
+    return <div className="absolute inset-0 h-full w-full" />;
+  }
 
   return (
     <div

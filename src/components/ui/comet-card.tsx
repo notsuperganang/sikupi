@@ -8,6 +8,7 @@ import {
   useMotionTemplate,
 } from "motion/react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/lib/mobile-utils";
 
 export const CometCard = ({
   rotateDepth = 17.5,
@@ -21,7 +22,9 @@ export const CometCard = ({
   children: React.ReactNode;
 }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
+  // Always call all hooks to maintain consistent hook order
   const x = useMotionValue(0);
   const y = useMotionValue(0);
 
@@ -54,6 +57,15 @@ export const CometCard = ({
   const glareY = useTransform(mouseYSpring, [-0.5, 0.5], [0, 100]);
 
   const glareBackground = useMotionTemplate`radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255, 255, 255, 0.9) 10%, rgba(255, 255, 255, 0.75) 20%, rgba(255, 255, 255, 0) 80%)`;
+
+  // Return simple card on mobile to avoid heavy animations (after all hooks are called)
+  if (isMobile) {
+    return (
+      <div className={cn("rounded-2xl border border-neutral-200/50 shadow-lg", className)}>
+        {children}
+      </div>
+    );
+  }
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!ref.current) return;

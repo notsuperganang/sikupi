@@ -101,36 +101,23 @@ export function AmpasHeroSection({ disableCTA = false }: AmpasHeroSectionProps) 
       </motion.div>
       
       {/* Typewriter Shiny Button */}
-      <motion.div 
-        className="mt-8 flex justify-center"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.4, duration: 0.6 }}
-      >
-        {disableCTA ? (
-          <div className="opacity-50 cursor-not-allowed pointer-events-none">
-            <TypewriterShinyButton 
-              texts={[
-                "Mulai Analisis Sekarang",
-                "Analisis Ampas Kopi AI",
-                "Cek Potensi Ekonomis",
-                "Teknologi Canggih"
-              ]}
-            />
-          </div>
-        ) : (
+      {!disableCTA && (
+        <motion.div 
+          className="mt-8 flex justify-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.4, duration: 0.6 }}
+        >
           <Link href="/ampas-analyzer/form">
             <TypewriterShinyButton 
-              texts={[
-                "Mulai Analisis Sekarang",
-                "Analisis Ampas Kopi AI",
-                "Cek Potensi Ekonomis",
-                "Teknologi Canggih"
-              ]}
+              texts={[]}
+              staticText="Mulai Analisis Sekarang"
+              useRobotsIcon={true}
+              permanentGlow={true}
             />
           </Link>
-        )}
-      </motion.div>
+        </motion.div>
+      )}
     </motion.div>
   );
 }

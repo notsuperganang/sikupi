@@ -28,10 +28,10 @@ const Header = () => {
   // Navigation items - Indonesian copy
   const navItems = [
     { name: "Beranda", link: "/" },
-    { name: "Produk", link: "/products" },
-    { name: "Majalah", link: "/magazine" },
     { name: "Ampas Analyzer", link: "/ampas-analyzer" },
-    { name: "Chatbot", link: "/chat" }
+    { name: "Produk", link: "/products" },
+    { name: "Chatbot", link: "/chat" },
+    { name: "Majalah", link: "/magazine" }
   ]
 
   const cartItemCount = cart?.totals?.itemCount || 0

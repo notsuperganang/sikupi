@@ -266,34 +266,20 @@ export default function AmpasAnalyzerPage() {
     }
 
     return (
-      <motion.div 
-        className="flex flex-col lg:flex-row justify-between items-center gap-4 lg:gap-0 pt-8 md:pt-12 px-2 md:px-4"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.3 }}
-      >
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="lg:flex-shrink-0"
-        >
-          <Button
-            variant="outline"
-            onClick={handlePrevStep}
-            disabled={currentStep === 'attributes'}
-            className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400 transition-all duration-200 px-4 md:px-6 py-2 md:py-3 rounded-xl shadow-sm disabled:opacity-50 hover:shadow-md text-sm md:text-base"
-          >
-            <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 mr-1 md:mr-2" />
-            Kembali
-          </Button>
-        </motion.div>
-
+      <div className="pt-8 md:pt-12 px-2 md:px-4">
+        {/* Step Progress Indicator - Centered */}
         <motion.div 
-          className="flex items-center space-x-2 md:space-x-4 bg-white/80 backdrop-blur-sm rounded-2xl px-3 md:px-6 py-2 md:py-3 border border-stone-200/50 shadow-sm order-first lg:order-none"
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
+          className="flex justify-center mb-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
         >
+          <motion.div 
+            className="flex items-center space-x-2 md:space-x-4 bg-white/80 backdrop-blur-sm rounded-2xl px-3 md:px-6 py-2 md:py-3 border border-stone-200/50 shadow-sm"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
           {['attributes', 'images'].map((step, index) => {
             const stepIndex = ['attributes', 'images'].indexOf(currentStep);
             const isActive = currentStep === step;
@@ -341,42 +327,65 @@ export default function AmpasAnalyzerPage() {
               </div>
             );
           })}
+          </motion.div>
         </motion.div>
 
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="lg:flex-shrink-0"
+        {/* Navigation Buttons - Below progress indicator */}
+        <motion.div 
+          className="flex justify-between items-center gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
         >
-          <Button
-            onClick={handleNextStep}
-            disabled={
-              (currentStep === 'attributes' && !attributesComplete) ||
-              (currentStep === 'images' && !imagesComplete)
-            }
-            className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-4 md:px-8 py-2 md:py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm md:text-base"
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
-            {currentStep === 'images' ? (
-              <>
-                <Zap className="h-4 w-4 md:h-5 md:w-5 mr-1 md:mr-2" />
-                <span className="hidden sm:inline">Analisis Sekarang</span>
-                <span className="sm:hidden">Analisis</span>
-              </>
-            ) : (
-              <>
-                <span className="hidden sm:inline">Lanjut ke Upload</span>
-                <span className="sm:hidden">Lanjut</span>
-                <ArrowRight className="h-4 w-4 md:h-5 md:w-5 ml-1 md:ml-2" />
-              </>
-            )}
-          </Button>
+            <Button
+              variant="outline"
+              onClick={handlePrevStep}
+              disabled={currentStep === 'attributes'}
+              className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400 transition-all duration-200 px-4 md:px-6 py-2 md:py-3 rounded-xl shadow-sm disabled:opacity-50 hover:shadow-md text-sm md:text-base"
+            >
+              <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 mr-1 md:mr-2" />
+              Kembali
+            </Button>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Button
+              onClick={handleNextStep}
+              disabled={
+                (currentStep === 'attributes' && !attributesComplete) ||
+                (currentStep === 'images' && !imagesComplete)
+              }
+              className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-4 md:px-8 py-2 md:py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm md:text-base"
+            >
+              {currentStep === 'images' ? (
+                <>
+                  <Zap className="h-4 w-4 md:h-5 md:w-5 mr-1 md:mr-2" />
+                  <span className="hidden sm:inline">Analisis Sekarang</span>
+                  <span className="sm:hidden">Analisis</span>
+                </>
+              ) : (
+                <>
+                  <span className="hidden sm:inline">Lanjut ke Upload</span>
+                  <span className="sm:hidden">Lanjut</span>
+                  <ArrowRight className="h-4 w-4 md:h-5 md:w-5 ml-1 md:ml-2" />
+                </>
+              )}
+            </Button>
+          </motion.div>
         </motion.div>
-      </motion.div>
+      </div>
     );
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-stone-50 via-amber-50/30 to-yellow-50/40 pb-24 md:pb-6">
+    <main className="min-h-screen bg-gradient-to-br from-stone-50 via-amber-50/30 to-yellow-50/40 pb-6">
       {/* Hero Section */}
       <section className="relative py-16 md:py-24 pt-20 md:pt-28 overflow-hidden">
         {/* Animated Background Ripple Effect */}
@@ -397,7 +406,7 @@ export default function AmpasAnalyzerPage() {
         
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center">
-            <AmpasHeroSection disableCTA={currentStep === 'results'} />
+            <AmpasHeroSection disableCTA={true} />
           </div>
         </div>
       </section>
