@@ -66,6 +66,15 @@ function getScoreBadgeVariant(score: number): "default" | "secondary" | "destruc
 }
 
 export function AnalysisResults({ analysis, onAnalyzeAnother }: AnalysisResultsProps) {
+  // Fix hydration mismatch by using deterministic values instead of Math.random()
+  const coffeeBeans = Array.from({ length: 8 }, (_, i) => ({
+    id: i,
+    left: `${(i * 13 + 7) % 90 + 5}%`,  // Deterministic but varied positions
+    top: `${(i * 17 + 11) % 80 + 10}%`,
+    duration: 3 + (i % 3),               // 3, 4, or 5 seconds
+    delay: i * 0.3,                      // Staggered delays
+  }));
+
   return (
     <NeonGradientCard
       className="w-full max-w-7xl mx-auto"
@@ -86,22 +95,22 @@ export function AnalysisResults({ analysis, onAnalyzeAnother }: AnalysisResultsP
       <div className="text-center space-y-6 relative overflow-hidden">
         {/* Floating coffee beans background */}
         <div className="absolute inset-0 opacity-5 pointer-events-none">
-          {[...Array(8)].map((_, i) => (
+          {coffeeBeans.map((bean) => (
             <motion.div
-              key={i}
+              key={bean.id}
               className="absolute w-3 h-3 bg-amber-800 rounded-full"
               style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
+                left: bean.left,
+                top: bean.top,
               }}
               animate={{
                 y: [-10, 10, -10],
                 rotate: [0, 180, 360],
               }}
               transition={{
-                duration: 3 + Math.random() * 2,
+                duration: bean.duration,
                 repeat: Infinity,
-                delay: Math.random() * 2,
+                delay: bean.delay,
               }}
             />
           ))}

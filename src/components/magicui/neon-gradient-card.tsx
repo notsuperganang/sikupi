@@ -83,25 +83,6 @@ export const NeonGradientCard: React.FC<NeonGradientCardProps> = ({
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const isMobile = useIsMobile();
 
-  // Return simple gradient card on mobile without heavy animations
-  if (isMobile) {
-    return (
-      <div
-        className={cn(
-          "relative size-full rounded-[20px] p-1",
-          "bg-gradient-to-r from-neutral-300 to-neutral-400 shadow-lg",
-          "dark:from-neutral-700 dark:to-neutral-600",
-          className
-        )}
-        {...props}
-      >
-        <div className="size-full rounded-[18px] bg-gray-100 p-6 dark:bg-neutral-900">
-          {children}
-        </div>
-      </div>
-    );
-  }
-
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
@@ -124,6 +105,26 @@ export const NeonGradientCard: React.FC<NeonGradientCardProps> = ({
       setDimensions({ width: offsetWidth, height: offsetHeight });
     }
   }, [children]);
+
+  // Simple mobile version - same hooks but different render
+  if (isMobile) {
+    return (
+      <div
+        ref={containerRef}
+        className={cn(
+          "relative size-full rounded-[20px] p-1",
+          "bg-gradient-to-r from-neutral-300 to-neutral-400 shadow-lg",
+          "dark:from-neutral-700 dark:to-neutral-600",
+          className
+        )}
+        {...props}
+      >
+        <div className="size-full rounded-[18px] bg-gray-100 p-6 dark:bg-neutral-900">
+          {children}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
