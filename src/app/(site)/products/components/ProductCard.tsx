@@ -122,9 +122,9 @@ export function ProductCard({
           </div>
 
           {/* Enhanced Product Info */}
-          <div className="flex flex-col flex-grow p-4 space-y-3">
+          <div className="flex flex-col flex-grow p-3 sm:p-4 space-y-2 sm:space-y-3">
             {/* Title */}
-            <CardTitle className="text-lg font-bold leading-tight line-clamp-2 min-h-[3rem] text-[var(--sikupi-primary-800)] group-hover:text-[var(--sikupi-primary-600)] transition-colors">
+            <CardTitle className="text-base sm:text-lg font-bold leading-tight line-clamp-2 min-h-[2.5rem] sm:min-h-[3rem] text-[var(--sikupi-primary-800)] group-hover:text-[var(--sikupi-primary-600)] transition-colors">
               {product.title}
             </CardTitle>
 
@@ -134,17 +134,17 @@ export function ProductCard({
               {product.category === 'ampas_kopi' && (
                 <>
                   {product.coffeeType && product.coffeeType !== 'unknown' && (
-                    <Badge variant="outline" className="text-xs px-2 py-0.5 h-6 flex items-center border-[var(--sikupi-primary-300)] text-[var(--sikupi-primary-700)] bg-[var(--sikupi-primary-50)] hover:bg-[var(--sikupi-primary-100)] transition-colors">
+                    <Badge variant="outline" className="text-xs px-1.5 sm:px-2 py-0.5 h-5 sm:h-6 flex items-center border-[var(--sikupi-primary-300)] text-[var(--sikupi-primary-700)] bg-[var(--sikupi-primary-50)] hover:bg-[var(--sikupi-primary-100)] transition-colors">
                       {coffeeTypeTranslations[product.coffeeType]}
                     </Badge>
                   )}
                   {product.grindLevel && product.grindLevel !== 'unknown' && (
-                    <Badge variant="outline" className="text-xs px-2 py-0.5 h-6 flex items-center border-[var(--sikupi-coffee-medium)] text-[var(--sikupi-coffee-dark)] bg-[var(--sikupi-coffee-light)]/20 hover:bg-[var(--sikupi-coffee-light)]/30 transition-colors">
+                    <Badge variant="outline" className="text-xs px-1.5 sm:px-2 py-0.5 h-5 sm:h-6 flex items-center border-[var(--sikupi-coffee-medium)] text-[var(--sikupi-coffee-dark)] bg-[var(--sikupi-coffee-light)]/20 hover:bg-[var(--sikupi-coffee-light)]/30 transition-colors">
                       {grindLevelTranslations[product.grindLevel]}
                     </Badge>
                   )}
                   {product.condition && product.condition !== 'unknown' && (
-                    <Badge variant="outline" className="text-xs px-2 py-0.5 h-6 flex items-center border-[var(--sikupi-earth-forest)] text-[var(--sikupi-earth-soil)] bg-[var(--sikupi-earth-sand)]/30 hover:bg-[var(--sikupi-earth-sand)]/50 transition-colors">
+                    <Badge variant="outline" className="text-xs px-1.5 sm:px-2 py-0.5 h-5 sm:h-6 flex items-center border-[var(--sikupi-earth-forest)] text-[var(--sikupi-earth-soil)] bg-[var(--sikupi-earth-sand)]/30 hover:bg-[var(--sikupi-earth-sand)]/50 transition-colors">
                       {conditionTranslations[product.condition]}
                     </Badge>
                   )}
@@ -153,42 +153,42 @@ export function ProductCard({
               
               {/* Single badge for turunan products - same width as stock section */}
               {product.category !== 'ampas_kopi' && (
-                <div className="w-full bg-[var(--sikupi-primary-50)] rounded-lg px-3 py-2">
-                  <div className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--sikupi-primary-700)' }}>
+                <div className="w-full bg-[var(--sikupi-primary-50)] rounded-lg px-2 sm:px-3 py-1.5 sm:py-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium" style={{ color: 'var(--sikupi-primary-700)' }}>
                     {/* Show specific badge based on category */}
                     {product.category === 'scrub' && (
                       <>
-                        <Sparkles className="w-4 h-4" />
+                        <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>Perawatan Alami</span>
                       </>
                     )}
                     {product.category === 'briket' && (
                       <>
-                        <Recycle className="w-4 h-4" />
+                        <Recycle className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>Ramah Lingkungan</span>
                       </>
                     )}
                     {product.category === 'pupuk' && (
                       <>
-                        <Recycle className="w-4 h-4" />
+                        <Recycle className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>Organik Premium</span>
                       </>
                     )}
                     {product.category === 'pulp' && (
                       <>
-                        <Droplets className="w-4 h-4" />
+                        <Droplets className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>Kaya Nutrisi</span>
                       </>
                     )}
                     {product.category === 'pakan_ternak' && (
                       <>
-                        <Heart className="w-4 h-4" />
+                        <Heart className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>Berkualitas Tinggi</span>
                       </>
                     )}
                     {(product.category === 'lainnya' || !['scrub', 'briket', 'pupuk', 'pulp', 'pakan_ternak'].includes(product.category)) && (
                       <>
-                        <Sparkles className="w-4 h-4" />
+                        <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>Kualitas Premium</span>
                       </>
                     )}
@@ -201,9 +201,9 @@ export function ProductCard({
             <div className="flex-grow"></div>
 
             {/* Price section with enhanced styling */}
-            <div className="space-y-3 mt-auto">
+            <div className="space-y-2 sm:space-y-3 mt-auto">
               <div className="flex items-baseline gap-2">
-                <span className="text-xl font-bold" style={{ color: 'var(--sikupi-primary-800)' }}>
+                <span className="text-lg sm:text-xl font-bold" style={{ color: 'var(--sikupi-primary-800)' }}>
                   {formatRupiah(product.price)}
                 </span>
                 <span className="text-sm font-medium" style={{ color: 'var(--sikupi-gray-500)' }}>
@@ -212,9 +212,9 @@ export function ProductCard({
               </div>
 
               {/* Enhanced Rating and Sales */}
-              <div className="flex items-center justify-between text-sm bg-[var(--sikupi-primary-50)] rounded-lg px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+              <div className="flex items-center justify-between text-xs sm:text-sm bg-[var(--sikupi-primary-50)] rounded-lg px-2 sm:px-3 py-1.5 sm:py-2">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400" />
                   <span className="font-semibold" style={{ color: 'var(--sikupi-primary-700)' }}>
                     {product.ratingAvg ? product.ratingAvg.toFixed(1) : '-'}
                   </span>
@@ -222,21 +222,21 @@ export function ProductCard({
                     ({product.ratingCount || 0})
                   </span>
                 </div>
-                <div className="font-medium" style={{ color: 'var(--sikupi-gray-600)' }}>
+                <div className="font-medium text-xs sm:text-sm" style={{ color: 'var(--sikupi-gray-600)' }}>
                   {product.soldCount || 0} terjual
                 </div>
               </div>
 
               {/* Enhanced Stock quantity */}
-              <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--sikupi-gray-700)' }}>
-                  <Package className="w-4 h-4" />
+              <div className="flex items-center justify-between bg-gray-50 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2">
+                <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm" style={{ color: 'var(--sikupi-gray-700)' }}>
+                  <Package className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="font-medium">{product.stockQty} kg tersedia</span>
                 </div>
                 
                 {stockStatus.status === 'out_of_stock' && (
-                  <div className="flex items-center gap-1 text-sm font-medium" style={{ color: 'var(--sikupi-accent-red)' }}>
-                    <AlertCircle className="w-4 h-4" />
+                  <div className="flex items-center gap-1 text-xs sm:text-sm font-medium" style={{ color: 'var(--sikupi-accent-red)' }}>
+                    <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span>Habis</span>
                   </div>
                 )}
@@ -264,7 +264,7 @@ export function ProductCardGrid({
   className
 }: ProductCardGridProps) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
       {products.map(product => (
         <ProductCard
           key={product.id}

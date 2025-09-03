@@ -176,8 +176,8 @@ export function ProductListingClient({
             </div>
           </div>
         )}
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex gap-6">
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+          <div className="flex gap-4 sm:gap-6">
             {/* Desktop Sidebar */}
             <div className="hidden lg:block w-64 flex-shrink-0">
               <div 
@@ -203,8 +203,8 @@ export function ProductListingClient({
             {/* Main Content */}
             <div className="flex-1 min-w-0">
               {/* Header */}
-              <div className="bg-white rounded-xl p-6 shadow-lg mb-6 border border-stone-200">
-                <div className="flex items-center justify-between">
+              <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg mb-4 sm:mb-6 border border-stone-200">
+                <div className="flex items-center justify-between gap-3">
                   {/* Mobile filter button */}
                   <div className="flex items-center gap-4">
                     <Button
