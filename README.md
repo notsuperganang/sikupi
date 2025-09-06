@@ -273,7 +273,7 @@ npm run seed         # Seed database with sample data
 <img src="https://github.com/notsuperganang.png" width="100px;" alt="Ganang Setyo Hadi"/><br>
 <b>Ganang Setyo Hadi</b><br>
 <i>Fullstack Developer</i><br>
-Informatics Engineering '22<br>
+Informatics '22<br>
 Universitas Syiah Kuala<br>
 <br>
 <a href="https://www.linkedin.com/in/ganang-setyo-hadi/">🔗 LinkedIn</a><br>
