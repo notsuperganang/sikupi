@@ -280,7 +280,7 @@ Universitas Syiah Kuala<br>
 <a href="https://github.com/notsuperganang">💻 GitHub</a>
 </td>
 <td align="center">
-<img src=".public/team/alif.png" width="100px;" alt="Alif Rizki Sahna"/><br>
+<img src="https://github.com/notsuperganang/sikupi-fixed/blob/9b00faf80acfbd0324620375a9e479a9c86f2652/public/team/alif.png" width="100px;" alt="Alif Rizki Sahna"/><br>
 <b>Alif Rizki Sahna</b><br>
 <i>Designer</i><br>
 Architecture '23<br>
@@ -289,7 +289,7 @@ Universitas Syiah Kuala<br>
 UI/UX Design
 </td>
 <td align="center">
-<img src=".public/team/novia.png" width="100px;" alt="Novia Ramadhani"/><br>
+<img src="https://github.com/notsuperganang/sikupi-fixed/blob/9b00faf80acfbd0324620375a9e479a9c86f2652/public/team/novia.png" width="100px;" alt="Novia Ramadhani"/><br>
 <b>Novia Ramadhani</b><br>
 <i>Business Manager</i><br>
 Management '22<br>
